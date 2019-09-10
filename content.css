@@ -1,0 +1,29 @@
+/* Copyright 2019 Daniel Erat. All rights reserved.
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file. */
+
+#duoleavemealone-msg {
+  border-radius: 16px;
+  bottom: 32px;
+  box-shadow: 0 4px 1px rgba(0, 0, 0, 0.2);
+  left: 32px;
+  opacity: 0;
+  padding: 16px 24px;
+  pointer-events: none;
+  position: fixed;
+  transition: opacity 0.2s linear;
+  z-index: 9999;
+}
+
+#duoleavemealone-msg.shown {
+  opacity: 1;
+  transition: opacity 0s;
+}
+
+#duoleavemealone-msg.correct {
+  background-color: #b8f28b;
+}
+
+#duoleavemealone-msg.complete {
+  background-color: #ffd54f;
+}
