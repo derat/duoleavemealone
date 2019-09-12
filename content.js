@@ -29,10 +29,10 @@ function getCorrectAnswerElement() {
   );
 }
 
-// Returns an array of currently-displayed lesson-complete h2 elements.
+// Returns an array of currently-displayed skill-complete h2 elements.
 // Returns an empty array if no elements are found.
-function getLessonCompleteElements() {
-  return ['Lesson Complete!', 'Combo bonus!']
+function getSkillCompleteElements() {
+  return ['Lesson Complete!', 'Combo bonus!', 'Test completed!']
     .map(p => findElement('h2', e => e.innerText.startsWith(p)))
     .filter(e => e);
 }
@@ -115,7 +115,7 @@ new MutationObserver(mutations => {
     return;
   }
 
-  const elements = getLessonCompleteElements();
+  const elements = getSkillCompleteElements();
   if (elements.length) {
     console.log(
       `Continuing after lesson complete: ${elements.map(e => e.innerText)}`,
