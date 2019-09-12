@@ -27,3 +27,9 @@
 #duoleavemealone-msg.complete {
   background-color: #ffd54f;
 }
+#duoleavemealone-msg.complete h2 {
+  margin-bottom: 0; /* get rid of weird 25px bottom margin */
+}
+#duoleavemealone-msg.complete h2 + h2 {
+  margin-top: 12px; /* add some space between consecutive elements */
+}
