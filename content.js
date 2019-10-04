@@ -2,54 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Finds the first element of type |tagName| for which |f| returns true.
-function findElement(tagName, f) {
+// Finds all elements of type |tagName| for which |f| returns true.
+// If |f| is undefined, all elements will be returned.
+function findElements(tagName, f) {
   // Only search under the root div created by Duolingo.
   const root = document.getElementById('root');
   if (!root) {
     console.log('Failed to find root element');
     return null;
   }
+  const es = [];
   for (const e of root.getElementsByTagName(tagName)) {
-    if (f(e)) return e;
+    if (f === undefined || f(e)) es.push(e);
   }
-  return null;
+  return es;
 }
 
-// Returns the h2 element containing the success message if it looks like the
-// user has just answered a question correctly.
-function getCorrectAnswerElement() {
-  return findElement(
-    'h2',
-    e =>
-      e.innerText == 'You are correct' ||
-      e.innerText.startsWith('Another correct solution:') ||
-      e.innerText.startsWith('Pay attention to the accents.') ||
-      e.innerText.startsWith('You have a typo.'),
-  );
-}
-
-// Returns an array of currently-displayed skill-complete h2 elements.
-// Returns an empty array if no elements are found.
-function getSkillCompleteElements() {
-  return ['Lesson Complete!', 'Combo bonus!', 'Test completed!']
-    .map(p => findElement('h2', e => e.innerText.startsWith(p)))
-    .filter(e => e);
-}
-
-// Returns true if a motivational screen (e.g. Duolingo saying "Excellent!") is
-// shown.
-function motivationShown() {
-  // This is pretty crappy, but I can't find any other way to match it.
-  // Hardcoding all of the messages doesn't seem great, and I don't see any
-  // other attributes that can be used to find this.
-  return !!findElement('div', e => {
-    const img = getComputedStyle(e)['background-image'];
-    return img && img.indexOf('/owls/') != -1;
-  });
-}
-
-// Used to display a message onscreen for a brief period.
+// Used to briefly display a message onscreen.
 class MessageBox {
   constructor() {
     this.div = document.createElement('div');
@@ -78,60 +47,164 @@ class MessageBox {
   }
 }
 
-let msgBox = new MessageBox();
+// Minimum duration between evaluating the page state due to DOM mutations.
+const mutationIntervalMs = 10;
 
-let nextButton = null;
+// CSS color properties for various UI elements.
+const correctButtonColor = 'rgb(88, 167, 0)';
+const correctMessageColor = 'rgb(88, 167, 0)';
+const correctDivColor = 'rgb(184, 242, 139)';
+const finishedButtonColor = 'rgb(88, 167, 0)';
+const finishedMessageColor = 'rgb(60, 60, 60)';
+const reviewButtonTextColor = 'rgb(175, 175, 175)';
 
-// It looks like Duolingo uses history.pushState to navigate between pages, so
-// we can't just run the script on /skill/ URLs. I don't think that there's any
-// way to detect pushState navigations from within a content script. Rather than
-// adding an additional background script that uses chrome.webNavigation API and
-// communicates with the content script, we just observe all DOM changes across
-// the main site.
-new MutationObserver(mutations => {
-  if (window.location.href.indexOf('/skill/') == -1) {
-    if (nextButton) {
-      console.log('Left skill page');
-      nextButton = null;
+// Clicks the "Continue" button to skip pointless screens.
+class ButtonClicker {
+  constructor() {
+    this.nextButton = null;
+    this.msgBox = new MessageBox();
+    this.lastMutationMs = new Date().getTime();
+    this.mutationTimeout = 0;
+
+    // It looks like Duolingo uses history.pushState to navigate between pages,
+    // so we can't just run the script on /skill/ URLs. I don't think that
+    // there's any way to detect pushState navigations from within a content
+    // script. Rather than adding an additional background script that uses
+    // chrome.webNavigation API and communicates with the content script, we
+    // just observe all DOM changes across the main site.
+    this.mutationObserver = new MutationObserver(
+      this.onMutation.bind(this),
+    ).observe(document, {
+      /*
+      attributes: true,
+      characterData: true,
+      */
+      childList: true,
+      subtree: true,
+    });
+  }
+
+  // Evaluates the page state.
+  checkState() {
+    if (window.location.href.indexOf('/skill/') == -1) {
+      if (this.nextButton) {
+        console.log('Left skill page');
+        this.nextButton = null;
+      }
+      return;
     }
-    return;
+
+    if (this.nextButton == null) {
+      const els = findElements(
+        'button',
+        e => e.getAttribute('data-test') == 'player-next',
+      );
+      if (els.length == 0) return;
+      console.log('Found next button');
+      this.nextButton = els[0];
+    }
+
+    // This will break horribly if/when the style changes, but the CSS classes
+    // have likely-unstable names like '_3H0e2'. The alternative of comparing
+    // innerText to various hardcoded messages like 'You are correct' won't work
+    // for non-English languages.
+    const buttonColor = getComputedStyle(this.nextButton)['background-color'];
+
+    if (this.answeredCorrectly(buttonColor)) {
+      const hs = findElements(
+        'h2',
+        e => getComputedStyle(e)['color'] == correctMessageColor,
+      );
+      console.log(
+        'Continuing after correct answer: ' + hs.map(e => e.innerText),
+      );
+      this.msgBox.show(hs.map(e => e.cloneNode(true)), 'correct', 2000);
+      this.nextButton.click();
+      return;
+    }
+
+    if (this.finishedLesson(buttonColor)) {
+      const hs = findElements(
+        'h2',
+        e => getComputedStyle(e)['color'] == finishedMessageColor,
+      );
+      console.log('Continuing after lesson: ' + hs.map(e => e.innerText));
+      this.msgBox.show(hs.map(e => e.cloneNode(true)), 'complete', 3000);
+      this.nextButton.click();
+      return;
+    }
+
+    if (this.motivationShown()) {
+      console.log('Continuing through motivational message');
+      this.nextButton.click();
+      return;
+    }
   }
 
-  if (nextButton == null) {
-    nextButton = findElement(
-      'button',
-      e => e.getAttribute('data-test') == 'player-next',
+  // Handles mutations to the DOM.
+  onMutation(mutations) {
+    const now = new Date().getTime();
+    const elapsedMs = now - this.lastMutationMs;
+    this.lastMutationMs = now;
+
+    // Bail out if there's already a scheduled call.
+    if (this.mutationTimeout) return;
+
+    // Rate-limit calls.
+    if (elapsedMs < mutationIntervalMs) {
+      const delayMs = mutationIntervalMs - elapsedMs;
+      this.mutationTimeout = window.setTimeout(
+        this.onMutationTimeout.bind(this),
+        delayMs,
+      );
+      return;
+    }
+
+    this.checkState();
+  }
+
+  // Handles |mutationTimeout| firing.
+  onMutationTimeout() {
+    this.mutationTimeout = 0;
+    this.checkState();
+  }
+
+  // Returns true if the UI currently indicates that the user just answered a
+  // question correctly.
+  answeredCorrectly(buttonColor) {
+    // Look for a green next button, along with a div with a light green
+    // background that holds both the message and the button.
+    return (
+      buttonColor == correctButtonColor &&
+      findElements(
+        'div',
+        e => getComputedStyle(e)['background-color'] == correctDivColor,
+      ).length
     );
-    if (nextButton) console.log('Found next button');
   }
 
-  if (!nextButton || nextButton.innerText != 'CONTINUE') return;
-
-  const element = getCorrectAnswerElement();
-  if (element) {
-    console.log(`Continuing after correct answer: "${element.innerText}"`);
-    msgBox.show(element.cloneNode(true), 'correct', 2000);
-    nextButton.click();
-    return;
-  }
-
-  const elements = getSkillCompleteElements();
-  if (elements.length) {
-    console.log(
-      `Continuing after lesson complete: ${elements.map(e => e.innerText)}`,
+  // Returns true if the UI currently indicates that the user just completed a
+  // lesson.
+  finishedLesson(buttonColor) {
+    // Look for a green next button, the headers that contain the completion
+    // message, and the gray "review" button.
+    return (
+      buttonColor == finishedButtonColor &&
+      findElements('h2').length &&
+      findElements(
+        'button',
+        e => getComputedStyle(e)['color'] == reviewButtonTextColor,
+      ).length
     );
-    msgBox.show(elements.map(e => e.cloneNode(true)), 'complete', 3000);
-    nextButton.click();
-    return;
   }
 
-  if (motivationShown()) {
-    console.log('Continuing through motivational message');
-    nextButton.click();
-    return;
+  // Returns true if a motivational message is being shown.
+  motivationShown() {
+    return !!findElements('div', e => {
+      const img = getComputedStyle(e)['background-image'];
+      return img && img.indexOf('/owls/') != -1;
+    }).length;
   }
-}).observe(document, {
-  attributes: true,
-  characterData: true,
-  subtree: true,
-});
+}
+
+const clicker = new ButtonClicker();
