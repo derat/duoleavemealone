@@ -47,9 +47,6 @@ class MessageBox {
   }
 }
 
-// Minimum duration between evaluating the page state due to DOM mutations.
-const mutationIntervalMs = 10;
-
 // CSS color properties for various UI elements.
 const correctButtonColor = 'rgb(88, 167, 0)';
 const correctMessageColor = 'rgb(88, 167, 0)';
@@ -63,8 +60,6 @@ class ButtonClicker {
   constructor() {
     this.nextButton = null;
     this.msgBox = new MessageBox();
-    this.lastMutationMs = new Date().getTime();
-    this.mutationTimeout = 0;
 
     // It looks like Duolingo uses history.pushState to navigate between pages,
     // so we can't just run the script on /skill/ URLs. I don't think that
@@ -75,17 +70,13 @@ class ButtonClicker {
     this.mutationObserver = new MutationObserver(
       this.onMutation.bind(this),
     ).observe(document, {
-      /*
-      attributes: true,
-      characterData: true,
-      */
       childList: true,
       subtree: true,
     });
   }
 
-  // Evaluates the page state.
-  checkState() {
+  // Evaluates the page state whenever the DOM is mutated.
+  onMutation(mutations) {
     if (window.location.href.indexOf('/skill/') == -1) {
       if (this.nextButton) {
         console.log('Left skill page');
@@ -139,34 +130,6 @@ class ButtonClicker {
       this.nextButton.click();
       return;
     }
-  }
-
-  // Handles mutations to the DOM.
-  onMutation(mutations) {
-    const now = new Date().getTime();
-    const elapsedMs = now - this.lastMutationMs;
-    this.lastMutationMs = now;
-
-    // Bail out if there's already a scheduled call.
-    if (this.mutationTimeout) return;
-
-    // Rate-limit calls.
-    if (elapsedMs < mutationIntervalMs) {
-      const delayMs = mutationIntervalMs - elapsedMs;
-      this.mutationTimeout = window.setTimeout(
-        this.onMutationTimeout.bind(this),
-        delayMs,
-      );
-      return;
-    }
-
-    this.checkState();
-  }
-
-  // Handles |mutationTimeout| firing.
-  onMutationTimeout() {
-    this.mutationTimeout = 0;
-    this.checkState();
   }
 
   // Returns true if the UI currently indicates that the user just answered a
