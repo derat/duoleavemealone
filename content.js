@@ -18,6 +18,11 @@ function findElements(tagName, f) {
   return es;
 }
 
+// Returns the value of the CSS style named |name| from element |e|.
+function getStyle(e, name) {
+  return getComputedStyle(e)[name];
+}
+
 // Used to briefly display a message onscreen.
 class MessageBox {
   constructor() {
@@ -47,11 +52,13 @@ class MessageBox {
   }
 }
 
-// CSS color properties for various UI elements.
-const correctButtonColor = 'rgb(88, 167, 0)';
-const correctMessageColor = 'rgb(88, 167, 0)';
+// CSS color properties for various UI elements. This will break horribly
+// if/when the style changes, but the CSS classes have likely-unstable names
+// like '_3H0e2'. The alternative of comparing innerText to various hardcoded
+// messages like 'You are correct' won't work for non-English languages.
+const greenButtonColor = 'rgb(88, 167, 0)';
 const correctDivColor = 'rgb(184, 242, 139)';
-const finishedButtonColor = 'rgb(88, 167, 0)';
+const correctMessageColor = 'rgb(88, 167, 0)';
 const finishedMessageColor = 'rgb(60, 60, 60)';
 const reviewButtonTextColor = 'rgb(175, 175, 175)';
 
@@ -66,7 +73,7 @@ class ButtonClicker {
     // there's any way to detect pushState navigations from within a content
     // script. Rather than adding an additional background script that uses
     // chrome.webNavigation API and communicates with the content script, we
-    // just observe all DOM changes across the main site.
+    // just observe DOM changes across the whole site.
     this.mutationObserver = new MutationObserver(
       this.onMutation.bind(this),
     ).observe(document, {
@@ -95,16 +102,12 @@ class ButtonClicker {
       this.nextButton = els[0];
     }
 
-    // This will break horribly if/when the style changes, but the CSS classes
-    // have likely-unstable names like '_3H0e2'. The alternative of comparing
-    // innerText to various hardcoded messages like 'You are correct' won't work
-    // for non-English languages.
-    const buttonColor = getComputedStyle(this.nextButton)['background-color'];
+    const buttonColor = getStyle(this.nextButton, 'background-color');
 
     if (this.answeredCorrectly(buttonColor)) {
       const hs = findElements(
         'h2',
-        e => getComputedStyle(e)['color'] == correctMessageColor,
+        e => getStyle(e, 'color') == correctMessageColor,
       );
       console.log(
         'Continuing after correct answer: ' + hs.map(e => e.innerText),
@@ -117,7 +120,7 @@ class ButtonClicker {
     if (this.finishedLesson(buttonColor)) {
       const hs = findElements(
         'h2',
-        e => getComputedStyle(e)['color'] == finishedMessageColor,
+        e => getStyle(e, 'color') == finishedMessageColor,
       );
       console.log('Continuing after lesson: ' + hs.map(e => e.innerText));
       this.msgBox.show(hs.map(e => e.cloneNode(true)), 'complete', 3000);
@@ -125,7 +128,7 @@ class ButtonClicker {
       return;
     }
 
-    if (this.motivationShown()) {
+    if (this.motivationShown(buttonColor)) {
       console.log('Continuing through motivational message');
       this.nextButton.click();
       return;
@@ -138,10 +141,10 @@ class ButtonClicker {
     // Look for a green next button, along with a div with a light green
     // background that holds both the message and the button.
     return (
-      buttonColor == correctButtonColor &&
+      buttonColor == greenButtonColor &&
       findElements(
         'div',
-        e => getComputedStyle(e)['background-color'] == correctDivColor,
+        e => getStyle(e, 'background-color') == correctDivColor,
       ).length
     );
   }
@@ -152,21 +155,22 @@ class ButtonClicker {
     // Look for a green next button, the headers that contain the completion
     // message, and the gray "review" button.
     return (
-      buttonColor == finishedButtonColor &&
+      buttonColor == greenButtonColor &&
       findElements('h2').length &&
-      findElements(
-        'button',
-        e => getComputedStyle(e)['color'] == reviewButtonTextColor,
-      ).length
+      findElements('button', e => getStyle(e, 'color') == reviewButtonTextColor)
+        .length
     );
   }
 
   // Returns true if a motivational message is being shown.
-  motivationShown() {
-    return !!findElements('div', e => {
-      const img = getComputedStyle(e)['background-image'];
-      return img && img.indexOf('/owls/') != -1;
-    }).length;
+  motivationShown(buttonColor) {
+    return (
+      buttonColor == greenButtonColor &&
+      findElements('div', e => {
+        const img = getStyle(e, 'background-image');
+        return img && img.indexOf('/owls/') != -1;
+      }).length
+    );
   }
 }
 
