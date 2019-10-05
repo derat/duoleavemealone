@@ -14,6 +14,8 @@ certain screens:
 The messages that would be displayed after correct answers or completed lessons
 are briefly displayed onscreen instead.
 
+**This extension is not affiliated with Duolingo in any way.**
+
 [Duolingo]: https://www.duolingo.com/
 [content script extension]: https://developer.chrome.com/extensions/content_scripts
 [Chrome Web Store]: https://chrome.google.com/webstore/detail/duoleavemealone/clipadhhddnpnocanhnbonnhppdibnpf
