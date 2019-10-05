@@ -1,7 +1,7 @@
 {
   "name": "duoleavemealone",
-  "version": "0.2",
-  "description": "Disable Duolingo misfeatures",
+  "version": "0.3",
+  "description": "Makes Duolingo more user-friendly",
   "manifest_version": 2,
   "content_scripts": [
     {
