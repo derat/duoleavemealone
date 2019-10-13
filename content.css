@@ -23,6 +23,9 @@
 #duoleavemealone-msg.correct {
   background-color: #b8f28b;
 }
+#duoleavemealone-msg.correct div {
+  margin-bottom: 0; /* get rid of weird bottom margin */
+}
 
 #duoleavemealone-msg.complete {
   background-color: #ffd54f;

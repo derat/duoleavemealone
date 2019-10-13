@@ -112,6 +112,15 @@ class ButtonClicker {
       console.log(
         'Continuing after correct answer: ' + hs.map(e => e.innerText),
       );
+      // In spoken exercises, there is sometimes a single "You are correct" h2
+      // with a sibling div containing the translated text. Probably this was an
+      // oversight on Duolingo's part, and they meant to nest the div within the
+      // h2 as happens elsewhere.
+      if (hs.length == 1) {
+        for (const e of Array.from(hs[0].parentNode.childNodes)) {
+          if (e.nodeName == 'DIV') hs.push(e);
+        }
+      }
       this.msgBox.show(hs.map(e => e.cloneNode(true)), 'correct', 2000);
       this.nextButton.click();
       return;
