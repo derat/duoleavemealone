@@ -1,5 +1,6 @@
 {
-  "name": "duoleavemealone",
+  "name": "duoleavemealone for Duolingo",
+  "short_name": "duoleavemealone",
   "version": "0.3",
   "description": "Makes Duolingo more user-friendly",
   "manifest_version": 2,
