@@ -52,6 +52,9 @@ class MessageBox {
   }
 }
 
+// Minimum duration between evaluating the page state due to DOM mutations.
+const mutationIntervalMs = 10;
+
 // CSS color properties for various UI elements. This will break horribly
 // if/when the style changes, but the CSS classes have likely-unstable names
 // like '_3H0e2'. The alternative of comparing innerText to various hardcoded
@@ -67,6 +70,8 @@ class ButtonClicker {
   constructor() {
     this.nextButton = null;
     this.msgBox = new MessageBox();
+    this.lastMutationMs = new Date().getTime();
+    this.mutationTimeout = 0;
 
     // It looks like Duolingo uses history.pushState to navigate between pages,
     // so we can't just run the script on /skill/ URLs. I don't think that
@@ -84,6 +89,22 @@ class ButtonClicker {
 
   // Evaluates the page state whenever the DOM is mutated.
   onMutation(mutations) {
+    // Bail out if there's already a scheduled call.
+    if (this.mutationTimeout) return;
+
+    // Rate-limit calls.
+    const now = new Date().getTime();
+    const elapsedMs = now - this.lastMutationMs;
+    if (elapsedMs < mutationIntervalMs) {
+      this.mutationTimeout = window.setTimeout(
+        this.onMutationTimeout.bind(this),
+        mutationIntervalMs - elapsedMs,
+      );
+      return;
+    }
+
+    this.lastMutationMs = now;
+
     if (window.location.href.indexOf('/skill/') == -1) {
       if (this.nextButton) {
         console.log('Left skill page');
@@ -142,6 +163,12 @@ class ButtonClicker {
       this.nextButton.click();
       return;
     }
+  }
+
+  // Handles |mutationTimeout| firing.
+  onMutationTimeout() {
+    this.mutationTimeout = 0;
+    this.onMutation([]);
   }
 
   // Returns true if the UI currently indicates that the user just answered a
