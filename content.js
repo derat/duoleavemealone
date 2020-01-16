@@ -105,9 +105,12 @@ class ButtonClicker {
 
     this.lastMutationMs = now;
 
-    if (window.location.href.indexOf('/skill/') == -1) {
+    if (
+      window.location.href.indexOf('/practice') == -1 &&
+      window.location.href.indexOf('/skill/') == -1
+    ) {
       if (this.nextButton) {
-        console.log('Left skill page');
+        console.log('Left practice/skill page');
         this.nextButton = null;
       }
       return;
