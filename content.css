@@ -6,11 +6,13 @@
   border-radius: 16px;
   bottom: 32px;
   box-shadow: 0 4px 1px rgba(0, 0, 0, 0.2);
-  left: 32px;
+  left: 50%;
   opacity: 0;
   padding: 16px 24px;
   pointer-events: none;
   position: fixed;
+  /* Center horizontally: https://stackoverflow.com/a/25829529/6882947 */
+  transform: translateX(-50%);
   transition: opacity 0.2s linear;
   z-index: 9999;
 }
