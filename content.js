@@ -125,9 +125,11 @@ class ButtonClicker {
 
     const isPractice = window.location.href.indexOf('/practice') != -1;
     const isSkill = window.location.href.indexOf('/skill/') != -1;
-    if (!isPractice && !isSkill) {
+    const isCheckpoint = window.location.href.indexOf('/bigtest/') != -1;
+
+    if (!isPractice && !isSkill && !isCheckpoint) {
       if (this.nextButton) {
-        console.log('Left practice/skill page');
+        console.log('Left practice/skill/checkpoint page');
         this.nextButton = null;
         this.numCorrectClicks = 0;
       }
@@ -146,6 +148,31 @@ class ButtonClicker {
 
     const buttonColor = getStyle(this.nextButton, 'background-color');
 
+    // Skip correct answer screens.
+    if (this.answeredCorrectly(buttonColor)) {
+      const hs = findElements(
+        'h2',
+        e => getStyle(e, 'color') == correctMessageColor,
+      );
+      console.log(
+        'Continuing after correct answer: ' + hs.map(e => e.innerText),
+      );
+      // In spoken exercises, there is sometimes a single "You are correct" h2
+      // with a sibling div containing the translated text. Probably this was an
+      // oversight on Duolingo's part, and they meant to nest the div within the
+      // h2 as happens elsewhere.
+      if (hs.length == 1) {
+        for (const e of Array.from(hs[0].parentNode.childNodes)) {
+          if (e.nodeName == 'DIV') hs.push(e);
+        }
+      }
+      this.msgBox.show(hs.map(e => e.cloneNode(true)), 'correct', 2000);
+      this.numCorrectClicks++;
+      this.nextButton.click();
+      return;
+    }
+
+    // Auto-start practice.
     if (
       isPractice &&
       this.numCorrectClicks == 0 &&
@@ -174,29 +201,19 @@ class ButtonClicker {
       }
     }
 
-    if (this.answeredCorrectly(buttonColor)) {
-      const hs = findElements(
-        'h2',
-        e => getStyle(e, 'color') == correctMessageColor,
-      );
-      console.log(
-        'Continuing after correct answer: ' + hs.map(e => e.innerText),
-      );
-      // In spoken exercises, there is sometimes a single "You are correct" h2
-      // with a sibling div containing the translated text. Probably this was an
-      // oversight on Duolingo's part, and they meant to nest the div within the
-      // h2 as happens elsewhere.
-      if (hs.length == 1) {
-        for (const e of Array.from(hs[0].parentNode.childNodes)) {
-          if (e.nodeName == 'DIV') hs.push(e);
-        }
-      }
-      this.msgBox.show(hs.map(e => e.cloneNode(true)), 'correct', 2000);
-      this.numCorrectClicks++;
+    // Auto-start checkpoint.
+    if (
+      isCheckpoint &&
+      this.numCorrectClicks == 0 &&
+      buttonColor == greenButtonColor &&
+      findElements('img', e => e.src.indexOf('/checkpoint-castle') != -1)
+    ) {
+      console.log('Skipping checkpoint start screen');
       this.nextButton.click();
       return;
     }
 
+    // Skip lesson completion screen.
     if (this.finishedLesson(buttonColor)) {
       const hs = findElements(
         'h2',
@@ -208,6 +225,7 @@ class ButtonClicker {
       return;
     }
 
+    // Skip motivational messages.
     if (this.motivationShown(buttonColor)) {
       console.log('Continuing through motivational message');
       this.nextButton.click();
