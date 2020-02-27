@@ -2,6 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+const options = {
+  practiceAutoStart: practiceAutoStartDontStart,
+};
+
+chrome.storage.sync.get([practiceAutoStartKey], items => {
+  options.practiceAutoStart =
+    items[practiceAutoStartKey] || practiceAutoStartDontStart;
+});
+
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace != 'sync') return;
+  if (practiceAutoStartKey in changes) {
+    options.practiceAutoStart = changes[practiceAutoStartKey].newValue;
+  }
+});
+
 // Finds all elements of type |tagName| for which |f| returns true.
 // If |f| is undefined, all elements will be returned.
 function findElements(tagName, f) {
@@ -64,6 +80,7 @@ const correctDivColor = 'rgb(184, 242, 139)';
 const correctMessageColor = 'rgb(88, 167, 0)';
 const finishedMessageColor = 'rgb(60, 60, 60)';
 const reviewButtonTextColor = 'rgb(175, 175, 175)';
+const untimedPracticeButtonColor = 'rgb(24, 153, 214)';
 
 // Clicks the "Continue" button to skip pointless screens.
 class ButtonClicker {
@@ -72,6 +89,7 @@ class ButtonClicker {
     this.msgBox = new MessageBox();
     this.lastMutationMs = new Date().getTime();
     this.mutationTimeout = 0;
+    this.numCorrectClicks = 0; // number of clicks so far in skill
 
     // It looks like Duolingo uses history.pushState to navigate between pages,
     // so we can't just run the script on /skill/ URLs. I don't think that
@@ -105,13 +123,13 @@ class ButtonClicker {
 
     this.lastMutationMs = now;
 
-    if (
-      window.location.href.indexOf('/practice') == -1 &&
-      window.location.href.indexOf('/skill/') == -1
-    ) {
+    const isPractice = window.location.href.indexOf('/practice') != -1;
+    const isSkill = window.location.href.indexOf('/skill/') != -1;
+    if (!isPractice && !isSkill) {
       if (this.nextButton) {
         console.log('Left practice/skill page');
         this.nextButton = null;
+        this.numCorrectClicks = 0;
       }
       return;
     }
@@ -127,6 +145,34 @@ class ButtonClicker {
     }
 
     const buttonColor = getStyle(this.nextButton, 'background-color');
+
+    if (
+      isPractice &&
+      this.numCorrectClicks == 0 &&
+      buttonColor == greenButtonColor
+    ) {
+      const els = findElements(
+        'button',
+        e =>
+          e.getAttribute('data-test') == 'secondary-button' &&
+          getStyle(e, 'background-color') == untimedPracticeButtonColor,
+      );
+      if (els.length == 1) {
+        console.log('At practice start screen');
+        const untimedPracticeButton = els[0];
+
+        switch (options.practiceAutoStart) {
+          case practiceAutoStartTimed:
+            console.log('Starting timed practice');
+            this.nextButton.click();
+            return;
+          case practiceAutoStartUntimed:
+            console.log('Starting untimed practice');
+            untimedPracticeButton.click();
+            return;
+        }
+      }
+    }
 
     if (this.answeredCorrectly(buttonColor)) {
       const hs = findElements(
@@ -146,6 +192,7 @@ class ButtonClicker {
         }
       }
       this.msgBox.show(hs.map(e => e.cloneNode(true)), 'correct', 2000);
+      this.numCorrectClicks++;
       this.nextButton.click();
       return;
     }

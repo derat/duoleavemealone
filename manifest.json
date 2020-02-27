@@ -4,13 +4,18 @@
   "version": "0.6",
   "description": "Makes Duolingo more user-friendly",
   "manifest_version": 2,
+  "permissions": ["storage"],
   "content_scripts": [
     {
       "matches": ["*://*.duolingo.com/*"],
       "css": ["content.css"],
-      "js": ["content.js"]
+      "js": ["constants.js", "content.js"]
     }
   ],
+  "options_ui": {
+    "page": "options.html",
+    "chrome_style": true
+  },
   "icons": {
     "48": "icon-48.png",
     "128": "icon-128.png"

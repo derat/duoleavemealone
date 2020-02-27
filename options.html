@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>duoleavemealone Options</title>
+    <style>
+      body {
+        margin-bottom: 16px;
+      }
+      label {
+        margin-right: 8px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div>
+      <label for="practice-auto-start-select">When practicing skills:</label>
+      <select id="practice-auto-start-select">
+        <!-- These values need to match constants.js. -->
+        <option value="0" selected>Don't auto-start</option>
+        <option value="1">Auto-start timed practice</option>
+        <option value="2">Auto-start non-timed practice</option>
+      </select>
+    </div>
+    <script src="constants.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>
