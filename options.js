@@ -11,13 +11,27 @@ function saveOption(key, value) {
 }
 
 function loadOptions() {
-  chrome.storage.sync.get([practiceAutoStartKey], items => {
-    $('practice-auto-start-select').value = items[practiceAutoStartKey] || '0';
-  });
+  chrome.storage.sync.get(
+    [completeTimeoutMsKey, correctTimeoutMsKey, practiceAutoStartKey],
+    items => {
+      $('complete-timeout-input').value =
+        items[completeTimeoutMsKey] || completeTimeoutMsDefault;
+      $('correct-timeout-input').value =
+        items[correctTimeoutMsKey] || correctTimeoutMsDefault;
+      $('practice-auto-start-select').value =
+        items[practiceAutoStartKey] || practiceAutoStartDontStart;
+    },
+  );
 }
 
 document.addEventListener('DOMContentLoaded', loadOptions);
 
+$('complete-timeout-input').addEventListener('change', e => {
+  saveOption(completeTimeoutMsKey, parseInt(e.target.value));
+});
+$('correct-timeout-input').addEventListener('change', e => {
+  saveOption(correctTimeoutMsKey, parseInt(e.target.value));
+});
 $('practice-auto-start-select').addEventListener('change', e => {
   saveOption(practiceAutoStartKey, parseInt(e.target.value));
 });

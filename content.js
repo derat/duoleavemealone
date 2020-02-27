@@ -3,16 +3,35 @@
 // found in the LICENSE file.
 
 const options = {
+  completeTimeoutMs: completeTimeoutMsDefault,
+  correctTimeoutMs: correctTimeoutMsDefault,
   practiceAutoStart: practiceAutoStartDontStart,
 };
 
-chrome.storage.sync.get([practiceAutoStartKey], items => {
-  options.practiceAutoStart =
-    items[practiceAutoStartKey] || practiceAutoStartDontStart;
-});
+chrome.storage.sync.get(
+  [completeTimeoutMsKey, correctTimeoutMsKey, practiceAutoStartKey],
+  items => {
+    if (completeTimeoutMsKey in items) {
+      options.completeTimeoutMs = items[completeTimeoutMsKey];
+    }
+    if (correctTimeoutMsKey in items) {
+      options.correctTimeoutMs = items[correctTimeoutMsKey];
+    }
+    if (practiceAutoStartKey in items) {
+      options.practiceAutoStart = items[practiceAutoStartKey];
+    }
+  },
+);
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
   if (namespace != 'sync') return;
+
+  if (completeTimeoutMsKey in changes) {
+    options.completeTimeoutMs = changes[completeTimeoutMsKey].newValue;
+  }
+  if (correctTimeoutMsKey in changes) {
+    options.correctTimeoutMs = changes[correctTimeoutMsKey].newValue;
+  }
   if (practiceAutoStartKey in changes) {
     options.practiceAutoStart = changes[practiceAutoStartKey].newValue;
   }
@@ -166,7 +185,11 @@ class ButtonClicker {
           if (e.nodeName == 'DIV') hs.push(e);
         }
       }
-      this.msgBox.show(hs.map(e => e.cloneNode(true)), 'correct', 2000);
+      this.msgBox.show(
+        hs.map(e => e.cloneNode(true)),
+        'correct',
+        options.correctTimeoutMs,
+      );
       this.numCorrectClicks++;
       this.nextButton.click();
       return;
@@ -220,7 +243,11 @@ class ButtonClicker {
         e => getStyle(e, 'color') == finishedMessageColor,
       );
       console.log('Continuing after lesson: ' + hs.map(e => e.innerText));
-      this.msgBox.show(hs.map(e => e.cloneNode(true)), 'complete', 3000);
+      this.msgBox.show(
+        hs.map(e => e.cloneNode(true)),
+        'complete',
+        options.completeTimeoutMs,
+      );
       this.nextButton.click();
       return;
     }

@@ -7,3 +7,9 @@ const practiceAutoStartKey = 'practiceAutoStart';
 const practiceAutoStartDontStart = 0;
 const practiceAutoStartTimed = 1;
 const practiceAutoStartUntimed = 2;
+
+const correctTimeoutMsKey = 'correctTimeoutMs';
+const correctTimeoutMsDefault = 2000;
+
+const completeTimeoutMsKey = 'completeTimeoutMs';
+const completeTimeoutMsDefault = 3000;
