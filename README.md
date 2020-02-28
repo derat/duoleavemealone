@@ -10,6 +10,7 @@ certain screens:
 *   Correct answer
 *   Completed lesson
 *   Motivational messages
+*   Pre-practice/checkpoint/test screens
 
 The messages that would be displayed after correct answers or completed lessons
 are briefly displayed onscreen instead.

@@ -144,11 +144,12 @@ class ButtonClicker {
 
     const isPractice = window.location.href.indexOf('/practice') != -1;
     const isSkill = window.location.href.indexOf('/skill/') != -1;
-    const isCheckpoint = window.location.href.indexOf('/bigtest/') != -1;
+    const isTest = window.location.href.indexOf('/bigtest/') != -1;
+    const isCheckpoint = window.location.href.indexOf('/checkpoint/') != -1;
 
-    if (!isPractice && !isSkill && !isCheckpoint) {
+    if (!isPractice && !isSkill && !isTest && !isCheckpoint) {
       if (this.nextButton) {
-        console.log('Left practice/skill/checkpoint page');
+        console.log('Left practice/skill/test/checkpoint page');
         this.nextButton = null;
         this.numCorrectClicks = 0;
       }
@@ -224,14 +225,14 @@ class ButtonClicker {
       }
     }
 
-    // Auto-start checkpoint.
+    // Auto-start tests and checkpoints.
     if (
-      isCheckpoint &&
+      (isTest || isCheckpoint) &&
       this.numCorrectClicks == 0 &&
       buttonColor == greenButtonColor &&
       findElements('img', e => e.src.indexOf('/checkpoint-castle') != -1)
     ) {
-      console.log('Skipping checkpoint start screen');
+      console.log('Skipping test/checkpoint start screen');
       this.nextButton.click();
       return;
     }
