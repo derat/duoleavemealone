@@ -144,10 +144,11 @@ class ButtonClicker {
 
     const isPractice = window.location.href.indexOf('/practice') != -1;
     const isSkill = window.location.href.indexOf('/skill/') != -1;
-    const isTest = window.location.href.indexOf('/bigtest/') != -1;
+    const isSkillTest = isSkill && window.location.href.endsWith('/test');
+    const isBigTest = window.location.href.indexOf('/bigtest/') != -1;
     const isCheckpoint = window.location.href.indexOf('/checkpoint/') != -1;
 
-    if (!isPractice && !isSkill && !isTest && !isCheckpoint) {
+    if (!isPractice && !isSkill && !isBigTest && !isCheckpoint) {
       if (this.nextButton) {
         console.log('Left practice/skill/test/checkpoint page');
         this.nextButton = null;
@@ -225,14 +226,27 @@ class ButtonClicker {
       }
     }
 
-    // Auto-start tests and checkpoints.
+    // Auto-start "big tests" and checkpoints.
     if (
-      (isTest || isCheckpoint) &&
+      (isBigTest || isCheckpoint) &&
       this.numCorrectClicks == 0 &&
       buttonColor == greenButtonColor &&
       findElements('img', e => e.src.indexOf('/checkpoint-castle') != -1)
     ) {
-      console.log('Skipping test/checkpoint start screen');
+      console.log('Skipping big-test/checkpoint start screen');
+      this.nextButton.click();
+      return;
+    }
+
+    // Auto-start tests used to skip ahead to the next level in a skill (i.e.
+    // the "key" icon).
+    if (
+      isSkillTest &&
+      this.numCorrectClicks == 0 &&
+      buttonColor == greenButtonColor &&
+      findElements('div', e => e.getAttribute('data-test') == 'skill-icon')
+    ) {
+      console.log('Skipping skill test start screen');
       this.nextButton.click();
       return;
     }

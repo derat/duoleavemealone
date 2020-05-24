@@ -15,6 +15,9 @@ certain screens:
 The messages that would be displayed after correct answers or completed lessons
 are briefly displayed onscreen instead.
 
+Note that motivational message skipping can be unreliable. Luckily, Duolingo
+provides a setting to disable these now.
+
 **This extension is not affiliated with Duolingo in any way.**
 
 [Duolingo]: https://www.duolingo.com/
