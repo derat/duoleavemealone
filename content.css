@@ -28,6 +28,16 @@
 #duoleavemealone-msg.correct div {
   margin-bottom: 0; /* get rid of weird bottom margin */
 }
+#duoleavemealone-msg.correct a.hidden {
+  display: none;
+}
+#duoleavemealone-msg.correct.shown a {
+  cursor: pointer;
+  pointer-events: auto;
+}
+#duoleavemealone-msg.correct.shown a.loading {
+  cursor: progress;
+}
 
 #duoleavemealone-msg.complete {
   background-color: #ffd54f;

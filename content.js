@@ -37,18 +37,18 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
   }
 });
 
-// Finds all elements of type |tagName| for which |f| returns true.
-// If |f| is undefined, all elements will be returned.
-function findElements(tagName, f) {
-  // Only search under the root div created by Duolingo.
-  const root = document.getElementById('root');
+// Finds all elements of type |tagName| under |root| for which |f| returns true.
+// If |f| is undefined or null, all elements will be returned.
+// If |root| is undefined, Duolingo's root div will be searched.
+function findElements(tagName, f, root) {
+  if (!root) root = document.getElementById('root');
   if (!root) {
     console.log('Failed to find root element');
-    return null;
+    return [];
   }
   const es = [];
   for (const e of root.getElementsByTagName(tagName)) {
-    if (f === undefined || f(e)) es.push(e);
+    if (!f || f(e)) es.push(e);
   }
   return es;
 }
@@ -56,6 +56,55 @@ function findElements(tagName, f) {
 // Returns the value of the CSS style named |name| from element |e|.
 function getStyle(e, name) {
   return getComputedStyle(e)[name];
+}
+
+// Starts watching for specific XHRs made in the page's JS context.
+function injectXHRWatcher() {
+  // Content scripts run in an "isolated world" outside the page's JS context
+  // (https://developer.chrome.com/extensions/content_scripts#isolated_world),
+  // so a script element needs to be injected via the DOM. This technique is
+  // described at https://stackoverflow.com/a/9517879.
+  const script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.textContent =
+    '(' +
+    // For reasons that are unclear to me, console.log() doesn't work in this
+    // function, which makes debugging super-fun.
+    function() {
+      // Each match contains a regexp matching URLs passed to open() and the
+      // name of the corresponding custom event to emit. It'd be nicer to pass
+      // this into the function, but we can't access bound variables here since
+      // we're running in the page's context. Receiving matches here via custom
+      // events from the content script seems like overkill, at least for now.
+      const matches = [{re: /\/sessions$/, name: 'sessions'}];
+
+      const xhr = XMLHttpRequest.prototype;
+
+      const open = xhr.open;
+      xhr.open = function(method, url) {
+        this.url = url;
+        return open.apply(this, arguments);
+      };
+
+      const send = xhr.send;
+      xhr.send = function() {
+        this.addEventListener('load', () => {
+          // We can't directly communicate with the content script from here, so
+          // we emit custom events: https://stackoverflow.com/a/19312198
+          matches
+            .filter(m => this.url.match(m.re))
+            .forEach(m => {
+              document.dispatchEvent(
+                new CustomEvent(m.name, {detail: {text: this.responseText}}),
+              );
+            });
+        });
+        return send.apply(this, arguments);
+      };
+    } +
+    ')()';
+  (document.head || document.documentElement).appendChild(script);
+  script.remove();
 }
 
 // Used to briefly display a message onscreen.
@@ -109,6 +158,7 @@ class ButtonClicker {
     this.lastMutationMs = new Date().getTime();
     this.mutationTimeout = 0;
     this.numCorrectClicks = 0; // number of clicks so far in skill
+    this.promptSentenceIds = {}; // prompt to sentenceId from session
 
     // It looks like Duolingo uses history.pushState to navigate between pages,
     // so we can't just run the script on /skill/ URLs. I don't think that
@@ -121,6 +171,22 @@ class ButtonClicker {
     ).observe(document, {
       childList: true,
       subtree: true,
+    });
+
+    // Watch for session data being received when a new skill is started.
+    // We use this to get sentence IDs, which we can later use to call the
+    // /sentence endpoint to get the comment ID of the sentence's discussion
+    // thread.
+    document.addEventListener('sessions', e => {
+      const sessions = JSON.parse(e.detail.text);
+      console.log(`Got ${sessions.challenges.length} challenge(s)`);
+
+      // There's also a sentenceDiscussionId property for each sentence, but as
+      // far as I can tell it's always the same as sentenceId.
+      this.promptSentenceIds = {};
+      sessions.challenges.forEach(ch => {
+        this.promptSentenceIds[ch.prompt] = ch.sentenceId;
+      });
     });
   }
 
@@ -153,6 +219,7 @@ class ButtonClicker {
         console.log('Left practice/skill/test/checkpoint page');
         this.nextButton = null;
         this.numCorrectClicks = 0;
+        this.promptSentenceIds = {};
       }
       return;
     }
@@ -171,27 +238,14 @@ class ButtonClicker {
 
     // Skip correct answer screens.
     if (this.answeredCorrectly(buttonColor)) {
-      const hs = findElements(
-        'h2',
-        e => getStyle(e, 'color') == correctMessageColor,
-      );
-      console.log(
-        'Continuing after correct answer: ' + hs.map(e => e.innerText),
-      );
-      // In spoken exercises, there is sometimes a single "You are correct" h2
-      // with a sibling div containing the translated text. Probably this was an
-      // oversight on Duolingo's part, and they meant to nest the div within the
-      // h2 as happens elsewhere.
-      if (hs.length == 1) {
-        for (const e of Array.from(hs[0].parentNode.childNodes)) {
-          if (e.nodeName == 'DIV') hs.push(e);
-        }
-      }
-      this.msgBox.show(
-        hs.map(e => e.cloneNode(true)),
-        'correct',
-        options.correctTimeoutMs,
-      );
+      console.log('Continuing after correct answer');
+
+      // TODO: This message is quickly replaced by the lesson-complete message
+      // after the last question, which makes it hard to click the "discuss"
+      // link. Try to come up with some way to improve this.
+      const content = this.cloneCorrectMessage();
+      this.msgBox.show(content, 'correct', options.correctTimeoutMs);
+
       this.numCorrectClicks++;
       this.nextButton.click();
       return;
@@ -318,6 +372,138 @@ class ButtonClicker {
       }).length
     );
   }
+
+  // Clones the div containing the message displayed after a correct answer,
+  // along with related content.
+  cloneCorrectMessage() {
+    // The structure of the "correct" message seems to be a subset of the
+    // following:
+    //
+    // ...
+    //   <div>
+    //     <div>
+    //       <div>
+    //         <h2>You are correct</h2>
+    //         <!-- maybe other h2s? -->
+    //       </div>
+    //     </div>
+    //     <div>
+    //       <a>
+    //         <div></div><!-- flag icon -->
+    //         <span>Report</span>
+    //       <a>
+    //         <div></div><!-- speech bubble icon -->
+    //         <span>Discuss</span>
+    //
+    // We clone the top <div> in the above hierarchy.
+    const hs = findElements(
+      'h2',
+      e => getStyle(e, 'color') == correctMessageColor,
+    );
+
+    if (
+      hs.length < 1 ||
+      hs[0].parentNode.nodeName != 'DIV' ||
+      hs[0].parentNode.parentNode.nodeName != 'DIV' ||
+      hs[0].parentNode.parentNode.parentNode.nodeName != 'DIV'
+    ) {
+      console.log('Failed to find correct message: ', hs);
+      return [];
+    }
+
+    const container = hs[0].parentNode.parentNode.parentNode;
+    const clonedContainer = container.cloneNode(true);
+
+    // Event listeners don't get cloned, unfortunately. Add our own listener for
+    // the discuss link so we can open a window with the corresponding comment
+    // thread.
+    //
+    // The flag and discuss icon divs have background-image properties with URLs
+    // like the following:
+    //   url(//d35aaqx5ub95lt.cloudfront.net/images/grading-ribbon-flag-correct.svg)
+    //   url(//d35aaqx5ub95lt.cloudfront.net/images/grading-ribbon-discuss-correct.svg)
+    //
+    // Unfortunately, they don't appear to be styled at the point where this
+    // code runs, so just assume that the second one is the discussion link. I
+    // hope that this isn't broken for RTL... :-/
+    const links = clonedContainer.getElementsByTagName('a');
+    const sentenceId = this.getSentenceId();
+    for (let i = 0; i < links.length; i++) {
+      const link = links[i];
+      if (i == 1 && sentenceId) {
+        link.addEventListener('click', () => {
+          link.classList.add('loading');
+          this.openComments(sentenceId).finally(() => {
+            link.classList.remove('loading');
+          });
+        });
+      } else {
+        link.classList.add('hidden'); // Hide unsupported links for now.
+      }
+    }
+
+    return clonedContainer;
+  }
+
+  // getSentenceId attempts to find the ID of the currently-displayed
+  // prompt/sentence/challenge.
+  getSentenceId() {
+    // We can't take the obvious route of just using the challenge order from
+    // the session object, since the user may get some of the questions wrong
+    // (in which case Duolingo skips over them and then returns to them at the
+    // end of the lesson). Instead, we take the hacky approach of looking for a
+    // prompt from the session that shows up in the page's challenge text. This
+    // seems fragile (what if prompts overlap?) but I haven't found an alternate
+    // approach.
+    const challenges = findElements('div', e => {
+      const attr = e.getAttribute('data-test');
+      return attr && attr.split(' ').indexOf('challenge') != -1;
+    });
+    if (challenges.length != 1) {
+      console.log('Failed to find challenge div');
+      return undefined;
+    }
+
+    const text = challenges[0].innerText;
+    for (let [pr, sentenceId] of Object.entries(this.promptSentenceIds)) {
+      if (text.indexOf(pr) != -1) return sentenceId;
+    }
+
+    // TODO: I've seen this happen occasionally.
+    console.log(
+      'Sentence ID not found for challenge:',
+      text,
+      this.promptSentenceIds,
+    );
+    return undefined;
+  }
+
+  // Asynchronously opens a new window displaying the discussion thread for the
+  // supplied sentence. Returns a promise that is resolved when the window is
+  // opened.
+  openComments(sentenceId) {
+    // Getting the comment ID from Duolingo can take a long time, so open the
+    // window first so it doesn't pop up at a random point in the future.
+    const win = window.open();
+    win.document.body.innerHTML = `Loading discussion...`;
+
+    const sentenceUrl = `/sentence/${sentenceId}`;
+    console.log(`Requesting ${sentenceUrl}`);
+    return fetch(sentenceUrl)
+      .then(res => res.json())
+      .then(obj => {
+        // TODO: I noticed the 'comment' property missing once; dunno why.
+        const commentId = obj.comment.id;
+        const commentUrl = `https://forum.duolingo.com/comment/${commentId}`;
+        console.log(`Opening discussion thread ${commentUrl}`);
+        // TODO: Consider adding an option to control whether the new tab is
+        // focused or not. That's straightforward to do with chrome.tabs.create,
+        // except we can't call Chrome APIs from a content script, so we'd
+        // probably need to create a background page and send a message to it.
+        win.location = commentUrl;
+      });
+  }
 }
 
+injectXHRWatcher();
 const clicker = new ButtonClicker();
