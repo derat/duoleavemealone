@@ -505,5 +505,14 @@ class ButtonClicker {
   }
 }
 
+// This needs to run happen any other scripts are executed so we can catch the
+// /sessions file beng loaded. The script's 'run_at' property is set to
+// 'document_start' in manifest.json to make this happen:
+// https://developer.chrome.com/extensions/content_scripts#run_time
 injectXHRWatcher();
-const clicker = new ButtonClicker();
+
+// ButtonClicker constructs a MessageBox, which expects the DOM to be loaded:
+// https://stackoverflow.com/a/28188390
+document.addEventListener('DOMContentLoaded', () => {
+  var clicker = new ButtonClicker();
+});

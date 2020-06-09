@@ -8,6 +8,7 @@
   "content_scripts": [
     {
       "matches": ["*://*.duolingo.com/*"],
+      "run_at": "document_start",
       "css": ["content.css"],
       "js": ["constants.js", "content.js"]
     }
