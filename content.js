@@ -298,7 +298,13 @@ class ButtonClicker {
       isSkillTest &&
       this.numCorrectClicks == 0 &&
       buttonColor == greenButtonColor &&
-      findElements('div', e => e.getAttribute('data-test') == 'skill-icon')
+      // There are divs on the start screen with their data-test attributes set
+      // to 'skill-icon' and 'level-crown', but they unfortunately appear to
+      // remain in the DOM after the lesson is started.
+      findElements('div', e => {
+        const attr = e.getAttribute('data-test');
+        return attr && attr.split(' ').indexOf('challenge') != -1;
+      }).length == 0
     ) {
       console.log('Skipping skill test start screen');
       this.nextButton.click();
