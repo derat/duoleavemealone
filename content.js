@@ -280,22 +280,10 @@ class ButtonClicker {
       }
     }
 
-    // Auto-start "big tests" and checkpoints.
+    // Auto-start "big tests", checkpoints, and tests used to skip ahead to the
+    // next level in a skill (i.e. the "key" icon).
     if (
-      (isBigTest || isCheckpoint) &&
-      this.numCorrectClicks == 0 &&
-      buttonColor == greenButtonColor &&
-      findElements('img', e => e.src.indexOf('/checkpoint-castle') != -1)
-    ) {
-      console.log('Skipping big-test/checkpoint start screen');
-      this.nextButton.click();
-      return;
-    }
-
-    // Auto-start tests used to skip ahead to the next level in a skill (i.e.
-    // the "key" icon).
-    if (
-      isSkillTest &&
+      (isBigTest || isCheckpoint || isSkillTest) &&
       this.numCorrectClicks == 0 &&
       buttonColor == greenButtonColor &&
       // There are divs on the start screen with their data-test attributes set
@@ -306,7 +294,7 @@ class ButtonClicker {
         return attr && attr.split(' ').indexOf('challenge') != -1;
       }).length == 0
     ) {
-      console.log('Skipping skill test start screen');
+      console.log('Skipping test/checkpoint start screen');
       this.nextButton.click();
       return;
     }
