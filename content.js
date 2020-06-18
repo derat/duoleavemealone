@@ -146,6 +146,8 @@ class ButtonClicker {
     this.mutationObserver = new MutationObserver(
       this.onMutation.bind(this),
     ).observe(document, {
+      attributeFilter: ['autofocus'],
+      attributes: true,
       childList: true,
       subtree: true,
     });
@@ -190,10 +192,11 @@ class ButtonClicker {
     const isSkillTest = isSkill && window.location.href.endsWith('/test');
     const isBigTest = window.location.href.indexOf('/bigtest/') != -1;
     const isCheckpoint = window.location.href.indexOf('/checkpoint/') != -1;
+    const isStory = window.location.href.indexOf('/stories/') != -1;
 
-    if (!isPractice && !isSkill && !isBigTest && !isCheckpoint) {
+    if (!isPractice && !isSkill && !isBigTest && !isCheckpoint && !isStory) {
       if (this.nextButton) {
-        console.log('Left practice/skill/test/checkpoint page');
+        console.log('Left page');
         this.nextButton = null;
         this.numCorrectClicks = 0;
         this.promptSentenceIds = {};
@@ -201,7 +204,15 @@ class ButtonClicker {
       return;
     }
 
-    if (this.nextButton == null) {
+    // Duolingo's story implementation appears to be completely different from
+    // regular lessons, unfortunately. There don't seem to be 'data-test'
+    // attributes that can be used to identify different elements' roles.
+    if (isStory) {
+      this.onStoryMutation();
+      return;
+    }
+
+    if (!this.nextButton) {
       const els = findElements(
         'button',
         e => e.getAttribute('data-test') == 'player-next',
@@ -342,6 +353,26 @@ class ButtonClicker {
         return img && img.indexOf('/owls/') != -1;
       }).length
     );
+  }
+
+  // Handles a mutation during a story.
+  onStoryMutation() {
+    if (!options[storiesEnabledKey]) return;
+
+    const buttons = findElements('button');
+    if (buttons.length == 2 && !buttons[1].hasAttribute('disabled')) {
+      console.log('Ending story');
+      buttons[1].click();
+    } else if (buttons.length >= 1) {
+      const nextButton = buttons.find(
+        b => b.hasAttribute('autofocus') && !b.hasAttribute('disabled'),
+      );
+      if (nextButton) {
+        // TODO: Find out how to defer this until the audio finishes.
+        console.log('Advancing story');
+        nextButton.click();
+      }
+    }
   }
 
   // Clones the div containing the message displayed after a correct answer,

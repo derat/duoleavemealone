@@ -11,13 +11,17 @@ const optionIdKeys = {
   ['complete-timeout-input']: completeTimeoutMsKey,
   ['correct-timeout-input']: correctTimeoutMsKey,
   ['practice-auto-start-select']: practiceAutoStartKey,
+  ['stories-enabled-checkbox']: storiesEnabledKey,
 };
 
 // Initialize the UI with option values from storage.
 document.addEventListener('DOMContentLoaded', () => {
   chrome.storage.sync.get(optionKeys, items => {
     Object.entries(optionIdKeys).forEach(([id, key]) => {
-      $(id).value = key in items ? items[key] : optionDefaults[key];
+      const el = $(id);
+      const val = key in items ? items[key] : optionDefaults[key];
+      if (el.type === 'checkbox') el.checked = !!val;
+      else el.value = val;
     });
   });
 });
@@ -25,6 +29,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // Save options to storage when they're modified through the UI.
 Object.entries(optionIdKeys).forEach(([id, key]) => {
   $(id).addEventListener('change', e => {
-    chrome.storage.sync.set({[key]: parseInt(e.target.value)});
+    const val =
+      e.target.type === 'checkbox'
+        ? e.target.checked
+        : parseInt(e.target.value);
+    chrome.storage.sync.set({[key]: val});
   });
 });
