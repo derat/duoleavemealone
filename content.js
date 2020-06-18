@@ -2,39 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-const options = {
-  completeTimeoutMs: completeTimeoutMsDefault,
-  correctTimeoutMs: correctTimeoutMsDefault,
-  practiceAutoStart: practiceAutoStartDontStart,
-};
+// Current option values. Start with defaults and then update from storage.
+const options = Object.assign({}, optionDefaults);
+chrome.storage.sync.get(optionKeys, items => Object.assign(options, items));
 
-chrome.storage.sync.get(
-  [completeTimeoutMsKey, correctTimeoutMsKey, practiceAutoStartKey],
-  items => {
-    if (completeTimeoutMsKey in items) {
-      options.completeTimeoutMs = items[completeTimeoutMsKey];
-    }
-    if (correctTimeoutMsKey in items) {
-      options.correctTimeoutMs = items[correctTimeoutMsKey];
-    }
-    if (practiceAutoStartKey in items) {
-      options.practiceAutoStart = items[practiceAutoStartKey];
-    }
-  },
-);
-
+// Update |options| when new values are written to storage.
 chrome.storage.onChanged.addListener((changes, namespace) => {
   if (namespace != 'sync') return;
-
-  if (completeTimeoutMsKey in changes) {
-    options.completeTimeoutMs = changes[completeTimeoutMsKey].newValue;
-  }
-  if (correctTimeoutMsKey in changes) {
-    options.correctTimeoutMs = changes[correctTimeoutMsKey].newValue;
-  }
-  if (practiceAutoStartKey in changes) {
-    options.practiceAutoStart = changes[practiceAutoStartKey].newValue;
-  }
+  optionKeys.forEach(key => {
+    if (key in changes) options[key] = changes[key].newValue;
+  });
 });
 
 // Finds all elements of type |tagName| under |root| for which |f| returns true.
@@ -244,7 +221,7 @@ class ButtonClicker {
       // after the last question, which makes it hard to click the "discuss"
       // link. Try to come up with some way to improve this.
       const content = this.cloneCorrectMessage();
-      this.msgBox.show(content, 'correct', options.correctTimeoutMs);
+      this.msgBox.show(content, 'correct', options[correctTimeoutMsKey]);
 
       this.numCorrectClicks++;
       this.nextButton.click();
@@ -267,7 +244,7 @@ class ButtonClicker {
         console.log('At practice start screen');
         const untimedPracticeButton = els[0];
 
-        switch (options.practiceAutoStart) {
+        switch (options[practiceAutoStartKey]) {
           case practiceAutoStartTimed:
             console.log('Starting timed practice');
             this.nextButton.click();
@@ -309,7 +286,7 @@ class ButtonClicker {
       this.msgBox.show(
         hs.map(e => e.cloneNode(true)),
         'complete',
-        options.completeTimeoutMs,
+        options[completeTimeoutMsKey],
       );
       this.nextButton.click();
       return;

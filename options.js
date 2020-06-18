@@ -6,32 +6,25 @@ function $(id) {
   return document.getElementById(id);
 }
 
-function saveOption(key, value) {
-  chrome.storage.sync.set({[key]: value});
-}
+// Map from element ID to corresponding option.
+const optionIdKeys = {
+  ['complete-timeout-input']: completeTimeoutMsKey,
+  ['correct-timeout-input']: correctTimeoutMsKey,
+  ['practice-auto-start-select']: practiceAutoStartKey,
+};
 
-function loadOptions() {
-  chrome.storage.sync.get(
-    [completeTimeoutMsKey, correctTimeoutMsKey, practiceAutoStartKey],
-    items => {
-      $('complete-timeout-input').value =
-        items[completeTimeoutMsKey] || completeTimeoutMsDefault;
-      $('correct-timeout-input').value =
-        items[correctTimeoutMsKey] || correctTimeoutMsDefault;
-      $('practice-auto-start-select').value =
-        items[practiceAutoStartKey] || practiceAutoStartDontStart;
-    },
-  );
-}
-
-document.addEventListener('DOMContentLoaded', loadOptions);
-
-$('complete-timeout-input').addEventListener('change', e => {
-  saveOption(completeTimeoutMsKey, parseInt(e.target.value));
+// Initialize the UI with option values from storage.
+document.addEventListener('DOMContentLoaded', () => {
+  chrome.storage.sync.get(optionKeys, items => {
+    Object.entries(optionIdKeys).forEach(([id, key]) => {
+      $(id).value = key in items ? items[key] : optionDefaults[key];
+    });
+  });
 });
-$('correct-timeout-input').addEventListener('change', e => {
-  saveOption(correctTimeoutMsKey, parseInt(e.target.value));
-});
-$('practice-auto-start-select').addEventListener('change', e => {
-  saveOption(practiceAutoStartKey, parseInt(e.target.value));
+
+// Save options to storage when they're modified through the UI.
+Object.entries(optionIdKeys).forEach(([id, key]) => {
+  $(id).addEventListener('change', e => {
+    chrome.storage.sync.set({[key]: parseInt(e.target.value)});
+  });
 });

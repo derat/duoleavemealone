@@ -2,14 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// chrome.storage.sync key and values.
+// Option keys. Used both for chrome.storage.sync and options object.
+const completeTimeoutMsKey = 'completeTimeoutMs';
+const correctTimeoutMsKey = 'correctTimeoutMs';
 const practiceAutoStartKey = 'practiceAutoStart';
+
+// Values for |practiceAutoStartKey|.
 const practiceAutoStartDontStart = 0;
 const practiceAutoStartTimed = 1;
 const practiceAutoStartUntimed = 2;
 
-const correctTimeoutMsKey = 'correctTimeoutMs';
-const correctTimeoutMsDefault = 2000;
+// Default values for options.
+const optionDefaults = {
+  [completeTimeoutMsKey]: 3000,
+  [correctTimeoutMsKey]: 2000,
+  [practiceAutoStartKey]: practiceAutoStartDontStart,
+};
 
-const completeTimeoutMsKey = 'completeTimeoutMs';
-const completeTimeoutMsDefault = 3000;
+// All option keys.
+const optionKeys = Object.keys(optionDefaults);
