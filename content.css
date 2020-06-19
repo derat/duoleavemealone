@@ -41,6 +41,11 @@
 #duoleavemealone-msg.correct.shown a.loading {
   cursor: progress;
 }
+#duoleavemealone-msg.correct.has-extra {
+  /* Use a yellowish green when there's extra information, e.g. a typo. Using a
+   * filter lets us also change the color of images, e.g. the discuss icon. */
+  filter: hue-rotate(-30deg) saturate(120%);
+}
 
 #duoleavemealone-msg.complete {
   background-color: #ffd54f;

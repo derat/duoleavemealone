@@ -89,12 +89,13 @@ class MessageBox {
   constructor() {
     this.div = document.createElement('div');
     this.div.id = 'duoleavemealone-msg';
+    this.classes = [];
     document.body.appendChild(this.div);
   }
 
   // Shows |contents|, which may be a single element or an array of elements.
-  // |role| describes the message's role, i.e. 'correct' or 'complete'.
-  show(content, role, timeoutMs) {
+  // |classes| contains CSS classes, i.e. 'correct' or 'complete'.
+  show(content, classes, timeoutMs) {
     while (this.div.firstChild) this.div.removeChild(this.div.firstChild);
     if (Array.isArray(content)) {
       content.forEach(e => this.div.appendChild(e));
@@ -102,9 +103,9 @@ class MessageBox {
       this.div.appendChild(content);
     }
 
-    if (this.role) this.div.classList.remove(this.role);
-    this.div.classList.add('shown', role);
-    this.role = role;
+    this.classes.forEach(cl => this.div.classList.remove(cl));
+    this.div.classList.add('shown', ...classes);
+    this.classes = classes;
 
     if (this.hideTimeout) clearTimeout(this.hideTimeout);
     this.hideTimeout = window.setTimeout(() => {
@@ -234,12 +235,23 @@ class ButtonClicker {
     // Skip correct answer screens.
     if (this.answeredCorrectly(buttonColor)) {
       console.log('Continuing after correct answer');
+      const content = this.cloneCorrectMessage();
+      const classes = ['correct'];
+
+      // Change the color for e.g. typos or "meaning" messages, which have an
+      // additional <span> alongside the <h2>.
+      if (
+        content.firstChild &&
+        content.firstChild.firstChild &&
+        content.firstChild.firstChild.childElementCount > 1
+      ) {
+        classes.push('has-extra');
+      }
 
       // TODO: This message is quickly replaced by the lesson-complete message
       // after the last question, which makes it hard to click the "discuss"
       // link. Try to come up with some way to improve this.
-      const content = this.cloneCorrectMessage();
-      this.msgBox.show(content, 'correct', options[correctTimeoutMsKey]);
+      this.msgBox.show(content, classes, options[correctTimeoutMsKey]);
 
       this.numCorrectClicks++;
       this.nextButton.click();
@@ -303,7 +315,7 @@ class ButtonClicker {
       console.log('Continuing after lesson: ' + hs.map(e => e.innerText));
       this.msgBox.show(
         hs.map(e => e.cloneNode(true)),
-        'complete',
+        ['complete'],
         options[completeTimeoutMsKey],
       );
       this.nextButton.click();
@@ -424,6 +436,9 @@ class ButtonClicker {
     //       <div>
     //         <h2>You are correct</h2>
     //         <!-- maybe other h2s? -->
+    //       </div>
+    //       <div>
+    //         <span><!-- more spans containing e.g. typo --></span>
     //       </div>
     //     </div>
     //     <div>
