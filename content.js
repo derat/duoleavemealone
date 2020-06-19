@@ -107,7 +107,7 @@ class MessageBox {
     this.role = role;
 
     if (this.hideTimeout) clearTimeout(this.hideTimeout);
-    this.hideTimeout = setTimeout(() => {
+    this.hideTimeout = window.setTimeout(() => {
       this.div.classList.remove('shown');
     }, timeoutMs);
   }
@@ -115,6 +115,11 @@ class MessageBox {
 
 // Minimum duration between evaluating the page state due to DOM mutations.
 const mutationIntervalMs = 10;
+
+// Time to wait for speech to finish before advancing stories.
+// This is empirically chosen but seems to mostly work for Spanish (sometimes it
+// feels a bit too long, other times too short).
+const storySpeechDelayMs = 750;
 
 // CSS color properties for various UI elements. This will break horribly
 // if/when the style changes, but the CSS classes have likely-unstable names
@@ -134,6 +139,7 @@ class ButtonClicker {
     this.msgBox = new MessageBox();
     this.lastMutationMs = new Date().getTime();
     this.mutationTimeout = 0;
+    this.storyClickTimeout = 0;
     this.numCorrectClicks = 0; // number of clicks so far in skill
     this.promptSentenceIds = {}; // prompt to sentenceId from session
 
@@ -201,6 +207,7 @@ class ButtonClicker {
         this.numCorrectClicks = 0;
         this.promptSentenceIds = {};
       }
+      if (this.storyClickTimeout) this.cancelStoryClickTimeout();
       return;
     }
 
@@ -360,18 +367,48 @@ class ButtonClicker {
     if (!options[storiesEnabledKey]) return;
 
     const buttons = findElements('button');
+    if (!buttons.length) return;
+
+    // At the end of the story, there are two buttons. (The first one seems to
+    // correspond to the icon; no idea why.)
     if (buttons.length == 2 && !buttons[1].hasAttribute('disabled')) {
       console.log('Ending story');
       buttons[1].click();
-    } else if (buttons.length >= 1) {
-      const nextButton = buttons.find(
-        b => b.hasAttribute('autofocus') && !b.hasAttribute('disabled'),
-      );
-      if (nextButton) {
-        // TODO: Find out how to defer this until the audio finishes.
-        console.log('Advancing story');
-        nextButton.click();
-      }
+      return;
+    }
+
+    // Otherwise, the next button has the 'autofocus' attribute.
+    const nextButton = buttons.find(
+      b => b.hasAttribute('autofocus') && !b.hasAttribute('disabled'),
+    );
+    if (!nextButton) return;
+
+    // After a correct answer, advance immediately.
+    if (findElements('h2').length) {
+      console.log('Advancing story after correct answer');
+      this.cancelStoryClickTimeout();
+      // TODO: Maybe show the correct message here? It doesn't seem to typically
+      // have interesting information, though, and its contents appear to
+      // overflow the message box.
+      nextButton.click();
+      return;
+    }
+
+    // Otherwise, wait a bit for audio to finish and then advance the story.
+    if (this.storyClickTimeout) return;
+    console.log(`Will advance story in ${storySpeechDelayMs} ms`);
+    this.storyClickTimeout = window.setTimeout(() => {
+      this.storyClickTimeout = 0;
+      console.log('Advancing story');
+      nextButton.click();
+    }, storySpeechDelayMs);
+  }
+
+  // Cancels |storyClickTimeout| if it's set.
+  cancelStoryClickTimeout() {
+    if (this.storyClickTimeout) {
+      window.clearTimeout(this.storyClickTimeout);
+      this.storyClickTimeout = 0;
     }
   }
 

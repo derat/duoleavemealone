@@ -18,7 +18,7 @@ const optionDefaults = {
   [completeTimeoutMsKey]: 3000,
   [correctTimeoutMsKey]: 2000,
   [practiceAutoStartKey]: practiceAutoStartDontStart,
-  [storiesEnabledKey]: false,
+  [storiesEnabledKey]: true,
 };
 
 // All option keys.
