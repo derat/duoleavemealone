@@ -195,13 +195,21 @@ class ButtonClicker {
     this.lastMutationMs = now;
 
     const isPractice = window.location.href.indexOf('/practice') != -1;
+    const isPlacement = window.location.href.indexOf('/placement/') != -1; // before creating account
     const isSkill = window.location.href.indexOf('/skill/') != -1;
-    const isSkillTest = isSkill && window.location.href.endsWith('/test');
+    const isSkillTest = isSkill && window.location.href.endsWith('/test'); // "key" icon to skip to next level
     const isBigTest = window.location.href.indexOf('/bigtest/') != -1;
     const isCheckpoint = window.location.href.indexOf('/checkpoint/') != -1;
     const isStory = window.location.href.indexOf('/stories/') != -1;
 
-    if (!isPractice && !isSkill && !isBigTest && !isCheckpoint && !isStory) {
+    if (
+      !isPractice &&
+      !isPlacement &&
+      !isSkill && // includes |isSkillTest|
+      !isBigTest &&
+      !isCheckpoint &&
+      !isStory
+    ) {
       if (this.nextButton) {
         console.log('Left page');
         this.nextButton = null;
@@ -287,10 +295,9 @@ class ButtonClicker {
       }
     }
 
-    // Auto-start "big tests", checkpoints, and tests used to skip ahead to the
-    // next level in a skill (i.e. the "key" icon).
+    // Auto-start sequences that just have a single start button.
     if (
-      (isBigTest || isCheckpoint || isSkillTest) &&
+      (isBigTest || isCheckpoint || isPlacement || isSkillTest) &&
       this.numCorrectClicks == 0 &&
       buttonColor == greenButtonColor &&
       // There are divs on the start screen with their data-test attributes set
@@ -301,7 +308,7 @@ class ButtonClicker {
         return attr && attr.split(' ').indexOf('challenge') != -1;
       }).length == 0
     ) {
-      console.log('Skipping test/checkpoint start screen');
+      console.log('Skipping start screen');
       this.nextButton.click();
       return;
     }
