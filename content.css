@@ -56,3 +56,12 @@
 #duoleavemealone-msg.complete h2 + h2 {
   margin-top: 12px; /* add some space between consecutive elements */
 }
+#duoleavemealone-msg.complete.story h2 {
+  margin-top: 0; /* override 24px top margin */
+}
+#duoleavemealone-msg.complete.story div {
+  margin-bottom: 0; /* override 16px bottom margin */
+}
+#duoleavemealone-msg.complete.story span {
+  color: rgb(60, 60, 60); /* override yellow color in '+14 XP' message */
+}

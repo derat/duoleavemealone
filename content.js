@@ -392,6 +392,32 @@ class ButtonClicker {
     // correspond to the icon; no idea why.)
     if (buttons.length == 2 && !buttons[1].hasAttribute('disabled')) {
       console.log('Ending story');
+      // The structure of the story completion message is a bit different, e.g.:
+      //
+      // <div>
+      //   <div>[treasure-chest icon]</div>
+      //   <h2>"You've reached your daily goal"</h2>
+      //   <div>
+      //     <span>
+      //       <span>Story complete!</span>
+      //       <span>+14 XP</span>
+      //     </span>
+      //   </div>
+      //   ...
+      //
+      // Sometimes there's also a second h2 in the doc containing "Story complete!".
+      // Just grab the first h2 and the div after it.
+      const hs = findElements('h2');
+      if (hs.length) {
+        const els = [hs[0]];
+        const sib = hs[0].nextSibling;
+        if (sib && sib.tagName == 'DIV') els.push(sib);
+        this.msgBox.show(
+          els.map(e => e.cloneNode(true)),
+          ['complete', 'story'],
+          options[completeTimeoutMsKey],
+        );
+      }
       buttons[1].click();
       return;
     }
