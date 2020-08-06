@@ -132,6 +132,7 @@ const correctMessageColor = 'rgb(88, 167, 0)';
 const finishedMessageColor = 'rgb(60, 60, 60)';
 const reviewButtonTextColor = 'rgb(175, 175, 175)';
 const untimedPracticeButtonColor = 'rgb(24, 153, 214)';
+const storyCompleteButtonColor = 'rgb(24, 153, 214)';
 
 // Clicks the "Continue" button to skip pointless screens.
 class ButtonClicker {
@@ -428,6 +429,18 @@ class ButtonClicker {
     );
     if (!nextButton) return;
 
+    const buttonColor = getStyle(nextButton, 'background-color');
+
+    // Skip the "You've earned __ XP today" screen at the end of the story.
+    if (buttonColor == storyCompleteButtonColor) {
+      nextButton.click();
+      return;
+    }
+
+    // After an incorrect text-entry answer, the button is red
+    // ("rgb(234, 43, 43)") rather than green. Don't click it in that case.
+    if (buttonColor != greenButtonColor) return;
+
     // After a correct answer, advance immediately.
     if (findElements('h2').length) {
       console.log('Advancing story after correct answer');
@@ -436,6 +449,22 @@ class ButtonClicker {
       // have interesting information, though, and its contents appear to
       // overflow the message box.
       nextButton.click();
+      return;
+    }
+
+    // Most stories worth 20 XP or more include a text input challenge. The next
+    // button becomes clickable as soon as a character is typed. Make sure that
+    // we don't prematurely click the button while the user is answering (issue
+    // #17). The textarea is still present after they submit their answer, but
+    // it gets a 'disabled' attribute.
+    if (
+      findElements(
+        'textarea',
+        e =>
+          e.getAttribute('data-test') == 'stories-text-input' &&
+          !e.hasAttribute('disabled'),
+      ).length
+    ) {
       return;
     }
 
