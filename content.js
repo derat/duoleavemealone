@@ -143,7 +143,7 @@ class ButtonClicker {
     this.mutationTimeout = 0;
     this.storyClickTimeout = 0;
     this.numCorrectClicks = 0; // number of clicks so far in skill
-    this.promptSentenceIds = {}; // prompt to sentenceId from session
+    this.promptDiscussionIds = {}; // prompt to sentenceDiscussionId from session
 
     // It looks like Duolingo uses history.pushState to navigate between pages,
     // so we can't just run the script on /skill/ URLs. I don't think that
@@ -168,11 +168,9 @@ class ButtonClicker {
       const sessions = JSON.parse(e.detail.text);
       console.log(`Got ${sessions.challenges.length} challenge(s)`);
 
-      // There's also a sentenceDiscussionId property for each sentence, but as
-      // far as I can tell it's always the same as sentenceId.
-      this.promptSentenceIds = {};
+      this.promptDiscussionIds = {};
       sessions.challenges.forEach(ch => {
-        this.promptSentenceIds[ch.prompt] = ch.sentenceId;
+        this.promptDiscussionIds[ch.prompt] = ch.sentenceDiscussionId;
       });
     });
   }
@@ -215,7 +213,7 @@ class ButtonClicker {
         console.log('Left page');
         this.nextButton = null;
         this.numCorrectClicks = 0;
-        this.promptSentenceIds = {};
+        this.promptDiscussionIds = {};
       }
       if (this.storyClickTimeout) this.cancelStoryClickTimeout();
       return;
@@ -544,8 +542,11 @@ class ButtonClicker {
     // hope that this isn't broken for RTL... :-/
     const links = clonedContainer.getElementsByTagName('a');
     const sentenceId = this.getSentenceId();
+    let linkContainer = null; // <div> containing links
+    let showingLink = false;
     for (let i = 0; i < links.length; i++) {
       const link = links[i];
+      if (!linkContainer) linkContainer = link.parentNode;
       if (i == 1 && sentenceId) {
         link.addEventListener('click', () => {
           link.classList.add('loading');
@@ -553,9 +554,14 @@ class ButtonClicker {
             link.classList.remove('loading');
           });
         });
+        showingLink = true;
       } else {
         link.classList.add('hidden'); // Hide unsupported links for now.
       }
+    }
+    // The link container has a margin on top, so drop it if it's empty.
+    if (linkContainer && !showingLink) {
+      linkContainer.parentNode.removeChild(linkContainer);
     }
 
     return clonedContainer;
@@ -581,7 +587,7 @@ class ButtonClicker {
     }
 
     const text = challenges[0].innerText;
-    for (let [pr, sentenceId] of Object.entries(this.promptSentenceIds)) {
+    for (let [pr, sentenceId] of Object.entries(this.promptDiscussionIds)) {
       if (text.indexOf(pr) != -1) return sentenceId;
     }
 
@@ -589,7 +595,7 @@ class ButtonClicker {
     console.log(
       'Sentence ID not found for challenge:',
       text,
-      this.promptSentenceIds,
+      this.promptDiscussionIds,
     );
     return undefined;
   }
