@@ -47,7 +47,7 @@ function injectXHRWatcher() {
     '(' +
     // For reasons that are unclear to me, console.log() doesn't work in this
     // function, which makes debugging super-fun.
-    function() {
+    function () {
       // Each match contains a regexp matching URLs passed to open() and the
       // name of the corresponding custom event to emit. It'd be nicer to pass
       // this into the function, but we can't access bound variables here since
@@ -58,13 +58,13 @@ function injectXHRWatcher() {
       const xhr = XMLHttpRequest.prototype;
 
       const open = xhr.open;
-      xhr.open = function(method, url) {
+      xhr.open = function (method, url) {
         this.url = url;
         return open.apply(this, arguments);
       };
 
       const send = xhr.send;
-      xhr.send = function() {
+      xhr.send = function () {
         this.addEventListener('load', () => {
           // We can't directly communicate with the content script from here, so
           // we emit custom events: https://stackoverflow.com/a/19312198
@@ -540,7 +540,7 @@ class ButtonClicker {
     // Unfortunately, they don't appear to be styled at the point where this
     // code runs, so just assume that the second one is the discussion link. I
     // hope that this isn't broken for RTL... :-/
-    const links = clonedContainer.getElementsByTagName('a');
+    const links = clonedContainer.getElementsByTagName('button');
     const sentenceId = this.getSentenceId();
     let linkContainer = null; // <div> containing links
     let showingLink = false;

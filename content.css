@@ -31,14 +31,14 @@
 #duoleavemealone-msg.correct h2 + div {
   margin-bottom: 4px; /* add space between e.g. typo and discuss link */
 }
-#duoleavemealone-msg.correct a.hidden {
+#duoleavemealone-msg.correct button.hidden {
   display: none;
 }
-#duoleavemealone-msg.correct.shown a {
+#duoleavemealone-msg.correct.shown button {
   cursor: pointer;
   pointer-events: auto;
 }
-#duoleavemealone-msg.correct.shown a.loading {
+#duoleavemealone-msg.correct.shown button.loading {
   cursor: progress;
 }
 #duoleavemealone-msg.correct.has-extra {
