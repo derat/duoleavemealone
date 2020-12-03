@@ -387,9 +387,21 @@ class ButtonClicker {
     const buttons = findElements('button');
     if (!buttons.length) return;
 
-    // At the end of the story, there are two buttons. (The first one seems to
-    // correspond to the icon; no idea why.)
-    if (buttons.length == 2 && !buttons[1].hasAttribute('disabled')) {
+    // As of late 2020, there seems to be a single blue 'Continue' button with
+    // 'data-test' set to 'stories-player-done' at the end of the story.
+    // Earlier, there were two buttons (with the first one oddly corresponding
+    // to the icon).
+    let doneButton = buttons.find(
+      b => b.getAttribute('data-test') === 'stories-player-done',
+    );
+    if (
+      !doneButton &&
+      buttons.length === 2 &&
+      !buttons[1].hasAttribute('disabled')
+    ) {
+      doneButton = buttons[1];
+    }
+    if (doneButton) {
       console.log('Ending story');
       // The structure of the story completion message is a bit different, e.g.:
       //
@@ -417,7 +429,7 @@ class ButtonClicker {
           options[completeTimeoutMsKey],
         );
       }
-      buttons[1].click();
+      doneButton.click();
       return;
     }
 
