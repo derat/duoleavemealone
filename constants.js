@@ -6,6 +6,7 @@
 const completeTimeoutMsKey = 'completeTimeoutMs';
 const correctTimeoutMsKey = 'correctTimeoutMs';
 const practiceAutoStartKey = 'practiceAutoStart';
+const skipCorrectKey = 'skipCorrect';
 const storiesEnabledKey = 'storiesEnabled';
 
 // Values for |practiceAutoStartKey|.
@@ -18,6 +19,7 @@ const optionDefaults = {
   [completeTimeoutMsKey]: 3000,
   [correctTimeoutMsKey]: 2000,
   [practiceAutoStartKey]: practiceAutoStartDontStart,
+  [skipCorrectKey]: true,
   [storiesEnabledKey]: true,
 };
 

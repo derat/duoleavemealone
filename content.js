@@ -241,6 +241,8 @@ class ButtonClicker {
 
     // Skip correct answer screens.
     if (this.answeredCorrectly(buttonColor)) {
+      if (!options[skipCorrectKey]) return;
+
       console.log('Continuing after correct answer');
       const content = this.cloneCorrectMessage();
       const classes = ['correct'];

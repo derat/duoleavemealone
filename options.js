@@ -11,6 +11,7 @@ const optionIdKeys = {
   ['complete-timeout-input']: completeTimeoutMsKey,
   ['correct-timeout-input']: correctTimeoutMsKey,
   ['practice-auto-start-select']: practiceAutoStartKey,
+  ['skip-correct-checkbox']: skipCorrectKey,
   ['stories-enabled-checkbox']: storiesEnabledKey,
 };
 
