@@ -35,6 +35,20 @@ function getStyle(e, name) {
   return getComputedStyle(e)[name];
 }
 
+// Like getStyle(), but tries to convert the color value to #rrggbb.
+// Chrome's getComputedStyle() seems to always return colors as rgb().
+// Based on https://stackoverflow.com/a/3627747/6882947.
+function getColorStyle(e, name) {
+  const color = getStyle(e, name);
+  if (/^#[0-9a-f]{6}$/i.test(color)) return color;
+
+  const rgb = color.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+  if (!rgb) return color;
+
+  const hex = n => ('0' + parseInt(n).toString(16)).slice(-2);
+  return '#' + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3]);
+}
+
 // Starts watching for specific XHRs made in the page's JS context.
 function injectXHRWatcher() {
   // Content scripts run in an "isolated world" outside the page's JS context
@@ -126,15 +140,13 @@ const storySpeechDelayMs = 750;
 // if/when the style changes, but the CSS classes have likely-unstable names
 // like '_3H0e2'. The alternative of comparing innerText to various hardcoded
 // messages like 'You are correct' won't work for non-English languages.
-// Note also that getComputedStyle seems to always return colors as rgb()
-// triples even if the stylesheet specifies them as hex.
-const greenButtonColor = 'rgb(88, 167, 0)';
-const correctDivColor = 'rgb(215, 255, 184)';
-const correctMessageColor = 'rgb(88, 167, 0)';
-const finishedMessageColor = 'rgb(60, 60, 60)';
-const reviewButtonTextColor = 'rgb(175, 175, 175)';
-const untimedPracticeButtonColor = 'rgb(24, 153, 214)';
-const storyCompleteButtonColor = 'rgb(24, 153, 214)';
+const greenButtonColors = ['#58a700', '#58cc02'];
+const correctDivColor = '#d7ffb8';
+const correctMessageColor = '#58a700';
+const finishedMessageColor = '#3c3c3c';
+const reviewButtonTextColor = '#afafaf';
+const untimedPracticeButtonColor = '#1899d6';
+const storyCompleteButtonColor = '#1899d6';
 
 // Clicks the "Continue" button to skip pointless screens.
 class ButtonClicker {
@@ -239,7 +251,7 @@ class ButtonClicker {
       this.nextButton = els[0];
     }
 
-    const buttonColor = getStyle(this.nextButton, 'background-color');
+    const buttonColor = getColorStyle(this.nextButton, 'background-color');
 
     // Skip correct answer screens.
     if (this.answeredCorrectly(buttonColor)) {
@@ -273,13 +285,13 @@ class ButtonClicker {
     if (
       isPractice &&
       this.numCorrectClicks == 0 &&
-      buttonColor == greenButtonColor
+      greenButtonColors.includes(buttonColor)
     ) {
       const els = findElements(
         'button',
         e =>
           e.getAttribute('data-test') == 'secondary-button' &&
-          getStyle(e, 'background-color') == untimedPracticeButtonColor,
+          getColorStyle(e, 'background-color') == untimedPracticeButtonColor,
       );
       if (els.length == 1) {
         console.log('At practice start screen');
@@ -302,7 +314,7 @@ class ButtonClicker {
     if (
       (isBigTest || isCheckpoint || isPlacement || isSkillTest) &&
       this.numCorrectClicks == 0 &&
-      buttonColor == greenButtonColor &&
+      greenButtonColors.includes(buttonColor) &&
       // There are divs on the start screen with their data-test attributes set
       // to 'skill-icon' and 'level-crown', but they unfortunately appear to
       // remain in the DOM after the lesson is started.
@@ -320,7 +332,7 @@ class ButtonClicker {
     if (this.finishedLesson(buttonColor)) {
       const hs = findElements(
         'h2',
-        e => getStyle(e, 'color') == finishedMessageColor,
+        e => getColorStyle(e, 'color') == finishedMessageColor,
       );
       console.log('Continuing after lesson: ' + hs.map(e => e.innerText));
       this.msgBox.show(
@@ -352,10 +364,10 @@ class ButtonClicker {
     // Look for a green next button, along with a div with a light green
     // background that holds both the message and the button.
     return (
-      buttonColor == greenButtonColor &&
+      greenButtonColors.includes(buttonColor) &&
       findElements(
         'div',
-        e => getStyle(e, 'background-color') == correctDivColor,
+        e => getColorStyle(e, 'background-color') == correctDivColor,
       ).length
     );
   }
@@ -366,17 +378,19 @@ class ButtonClicker {
     // Look for a green next button, the headers that contain the completion
     // message, and the gray "review" button.
     return (
-      buttonColor == greenButtonColor &&
+      greenButtonColors.includes(buttonColor) &&
       findElements('h2').length &&
-      findElements('button', e => getStyle(e, 'color') == reviewButtonTextColor)
-        .length
+      findElements(
+        'button',
+        e => getColorStyle(e, 'color') == reviewButtonTextColor,
+      ).length
     );
   }
 
   // Returns true if a motivational message is being shown.
   motivationShown(buttonColor) {
     return (
-      buttonColor == greenButtonColor &&
+      greenButtonColors.includes(buttonColor) &&
       findElements('div', e => {
         const img = getStyle(e, 'background-image');
         return img && img.indexOf('/owls/') != -1;
@@ -443,7 +457,7 @@ class ButtonClicker {
     );
     if (!nextButton) return;
 
-    const buttonColor = getStyle(nextButton, 'background-color');
+    const buttonColor = getColorStyle(nextButton, 'background-color');
 
     // Skip the "You've earned __ XP today" screen at the end of the story.
     if (buttonColor == storyCompleteButtonColor) {
@@ -453,7 +467,7 @@ class ButtonClicker {
 
     // After an incorrect text-entry answer, the button is red
     // ("rgb(234, 43, 43)") rather than green. Don't click it in that case.
-    if (buttonColor != greenButtonColor) return;
+    if (!greenButtonColors.includes(buttonColor)) return;
 
     // After a correct answer, advance immediately.
     if (findElements('h2').length) {
@@ -528,7 +542,7 @@ class ButtonClicker {
     // We clone the top <div> in the above hierarchy.
     const hs = findElements(
       'h2',
-      e => getStyle(e, 'color') == correctMessageColor,
+      e => getColorStyle(e, 'color') == correctMessageColor,
     );
 
     if (
