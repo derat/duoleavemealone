@@ -126,8 +126,10 @@ const storySpeechDelayMs = 750;
 // if/when the style changes, but the CSS classes have likely-unstable names
 // like '_3H0e2'. The alternative of comparing innerText to various hardcoded
 // messages like 'You are correct' won't work for non-English languages.
+// Note also that getComputedStyle seems to always return colors as rgb()
+// triples even if the stylesheet specifies them as hex.
 const greenButtonColor = 'rgb(88, 167, 0)';
-const correctDivColor = 'rgb(184, 242, 139)';
+const correctDivColor = 'rgb(215, 255, 184)';
 const correctMessageColor = 'rgb(88, 167, 0)';
 const finishedMessageColor = 'rgb(60, 60, 60)';
 const reviewButtonTextColor = 'rgb(175, 175, 175)';
