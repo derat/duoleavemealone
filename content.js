@@ -207,16 +207,18 @@ class ButtonClicker {
 
     this.lastMutationMs = now;
 
-    const isPractice = window.location.href.indexOf('/practice') != -1;
-    const isPlacement = window.location.href.indexOf('/placement/') != -1; // before creating account
-    const isSkill = window.location.href.indexOf('/skill/') != -1;
+    const isPractice = window.location.href.includes('/practice');
+    const isProgressQuiz = window.location.href.includes('/progress-quiz/'); // for Plus accounts
+    const isPlacement = window.location.href.includes('/placement/'); // before creating account
+    const isSkill = window.location.href.includes('/skill/');
     const isSkillTest = isSkill && window.location.href.endsWith('/test'); // "key" icon to skip to next level
-    const isBigTest = window.location.href.indexOf('/bigtest/') != -1;
-    const isCheckpoint = window.location.href.indexOf('/checkpoint/') != -1;
-    const isStory = window.location.href.indexOf('/stories/') != -1;
+    const isBigTest = window.location.href.includes('/bigtest/');
+    const isCheckpoint = window.location.href.includes('/checkpoint/');
+    const isStory = window.location.href.includes('/stories/');
 
     if (
       !isPractice &&
+      !isProgressQuiz &&
       !isPlacement &&
       !isSkill && // includes |isSkillTest|
       !isBigTest &&
