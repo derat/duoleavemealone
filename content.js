@@ -4,12 +4,12 @@
 
 // Current option values. Start with defaults and then update from storage.
 const options = Object.assign({}, optionDefaults);
-chrome.storage.sync.get(optionKeys, items => Object.assign(options, items));
+chrome.storage.sync.get(optionKeys, (items) => Object.assign(options, items));
 
 // Update |options| when new values are written to storage.
 chrome.storage.onChanged.addListener((changes, namespace) => {
   if (namespace != 'sync') return;
-  optionKeys.forEach(key => {
+  optionKeys.forEach((key) => {
     if (key in changes) options[key] = changes[key].newValue;
   });
 });
@@ -45,7 +45,7 @@ function getColorStyle(e, name) {
   const rgb = color.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
   if (!rgb) return color;
 
-  const hex = n => ('0' + parseInt(n).toString(16)).slice(-2);
+  const hex = (n) => ('0' + parseInt(n).toString(16)).slice(-2);
   return '#' + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3]);
 }
 
@@ -67,7 +67,7 @@ function injectXHRWatcher() {
       // this into the function, but we can't access bound variables here since
       // we're running in the page's context. Receiving matches here via custom
       // events from the content script seems like overkill, at least for now.
-      const matches = [{re: /\/sessions$/, name: 'sessions'}];
+      const matches = [{ re: /\/sessions$/, name: 'sessions' }];
 
       const xhr = XMLHttpRequest.prototype;
 
@@ -83,10 +83,10 @@ function injectXHRWatcher() {
           // We can't directly communicate with the content script from here, so
           // we emit custom events: https://stackoverflow.com/a/19312198
           matches
-            .filter(m => this.url.match(m.re))
-            .forEach(m => {
+            .filter((m) => this.url.match(m.re))
+            .forEach((m) => {
               document.dispatchEvent(
-                new CustomEvent(m.name, {detail: {text: this.responseText}}),
+                new CustomEvent(m.name, { detail: { text: this.responseText } })
               );
             });
         });
@@ -112,12 +112,12 @@ class MessageBox {
   show(content, classes, timeoutMs) {
     while (this.div.firstChild) this.div.removeChild(this.div.firstChild);
     if (Array.isArray(content)) {
-      content.forEach(e => this.div.appendChild(e));
+      content.forEach((e) => this.div.appendChild(e));
     } else {
       this.div.appendChild(content);
     }
 
-    this.classes.forEach(cl => this.div.classList.remove(cl));
+    this.classes.forEach((cl) => this.div.classList.remove(cl));
     this.div.classList.add('shown', ...classes);
     this.classes = classes;
 
@@ -166,7 +166,7 @@ class ButtonClicker {
     // chrome.webNavigation API and communicates with the content script, we
     // just observe DOM changes across the whole site.
     this.mutationObserver = new MutationObserver(
-      this.onMutation.bind(this),
+      this.onMutation.bind(this)
     ).observe(document, {
       attributeFilter: ['autofocus'],
       attributes: true,
@@ -178,12 +178,12 @@ class ButtonClicker {
     // We use this to get sentence IDs, which we can later use to call the
     // /sentence endpoint to get the comment ID of the sentence's discussion
     // thread.
-    document.addEventListener('sessions', e => {
+    document.addEventListener('sessions', (e) => {
       const sessions = JSON.parse(e.detail.text);
       console.log(`Got ${sessions.challenges.length} challenge(s)`);
 
       this.promptDiscussionIds = {};
-      sessions.challenges.forEach(ch => {
+      sessions.challenges.forEach((ch) => {
         this.promptDiscussionIds[ch.prompt] = ch.sentenceDiscussionId;
       });
     });
@@ -200,7 +200,7 @@ class ButtonClicker {
     if (elapsedMs < mutationIntervalMs) {
       this.mutationTimeout = window.setTimeout(
         this.onMutationTimeout.bind(this),
-        mutationIntervalMs - elapsedMs,
+        mutationIntervalMs - elapsedMs
       );
       return;
     }
@@ -244,7 +244,7 @@ class ButtonClicker {
     if (!this.nextButton) {
       const els = findElements(
         'button',
-        e => e.getAttribute('data-test') == 'player-next',
+        (e) => e.getAttribute('data-test') == 'player-next'
       );
       if (els.length == 0) return;
       console.log('Found next button');
@@ -289,9 +289,9 @@ class ButtonClicker {
     ) {
       const els = findElements(
         'button',
-        e =>
+        (e) =>
           e.getAttribute('data-test') == 'secondary-button' &&
-          getColorStyle(e, 'background-color') == untimedPracticeButtonColor,
+          getColorStyle(e, 'background-color') == untimedPracticeButtonColor
       );
       if (els.length == 1) {
         console.log('At practice start screen');
@@ -318,7 +318,7 @@ class ButtonClicker {
       // There are divs on the start screen with their data-test attributes set
       // to 'skill-icon' and 'level-crown', but they unfortunately appear to
       // remain in the DOM after the lesson is started.
-      findElements('div', e => {
+      findElements('div', (e) => {
         const attr = e.getAttribute('data-test');
         return attr && attr.split(' ').indexOf('challenge') != -1;
       }).length == 0
@@ -332,13 +332,13 @@ class ButtonClicker {
     if (this.finishedLesson(buttonColor)) {
       const hs = findElements(
         'h2',
-        e => getColorStyle(e, 'color') == finishedMessageColor,
+        (e) => getColorStyle(e, 'color') == finishedMessageColor
       );
-      console.log('Continuing after lesson: ' + hs.map(e => e.innerText));
+      console.log('Continuing after lesson: ' + hs.map((e) => e.innerText));
       this.msgBox.show(
-        hs.map(e => e.cloneNode(true)),
+        hs.map((e) => e.cloneNode(true)),
         ['complete'],
-        options[completeTimeoutMsKey],
+        options[completeTimeoutMsKey]
       );
       this.nextButton.click();
       return;
@@ -367,7 +367,7 @@ class ButtonClicker {
       greenButtonColors.includes(buttonColor) &&
       findElements(
         'div',
-        e => getColorStyle(e, 'background-color') == correctDivColor,
+        (e) => getColorStyle(e, 'background-color') == correctDivColor
       ).length
     );
   }
@@ -382,7 +382,7 @@ class ButtonClicker {
       findElements('h2').length &&
       findElements(
         'button',
-        e => getColorStyle(e, 'color') == reviewButtonTextColor,
+        (e) => getColorStyle(e, 'color') == reviewButtonTextColor
       ).length
     );
   }
@@ -391,7 +391,7 @@ class ButtonClicker {
   motivationShown(buttonColor) {
     return (
       greenButtonColors.includes(buttonColor) &&
-      findElements('div', e => {
+      findElements('div', (e) => {
         const img = getStyle(e, 'background-image');
         return img && img.indexOf('/owls/') != -1;
       }).length
@@ -410,7 +410,7 @@ class ButtonClicker {
     // Earlier, there were two buttons (with the first one oddly corresponding
     // to the icon).
     let doneButton = buttons.find(
-      b => b.getAttribute('data-test') === 'stories-player-done',
+      (b) => b.getAttribute('data-test') === 'stories-player-done'
     );
     if (
       !doneButton &&
@@ -442,9 +442,9 @@ class ButtonClicker {
         const sib = hs[0].nextSibling;
         if (sib && sib.tagName == 'DIV') els.push(sib);
         this.msgBox.show(
-          els.map(e => e.cloneNode(true)),
+          els.map((e) => e.cloneNode(true)),
           ['complete', 'story'],
-          options[completeTimeoutMsKey],
+          options[completeTimeoutMsKey]
         );
       }
       doneButton.click();
@@ -453,7 +453,7 @@ class ButtonClicker {
 
     // Otherwise, the next button has the 'autofocus' attribute.
     const nextButton = buttons.find(
-      b => b.hasAttribute('autofocus') && !b.hasAttribute('disabled'),
+      (b) => b.hasAttribute('autofocus') && !b.hasAttribute('disabled')
     );
     if (!nextButton) return;
 
@@ -488,9 +488,9 @@ class ButtonClicker {
     if (
       findElements(
         'textarea',
-        e =>
+        (e) =>
           e.getAttribute('data-test') == 'stories-text-input' &&
-          !e.hasAttribute('disabled'),
+          !e.hasAttribute('disabled')
       ).length
     ) {
       return;
@@ -542,7 +542,7 @@ class ButtonClicker {
     // We clone the top <div> in the above hierarchy.
     const hs = findElements(
       'h2',
-      e => getColorStyle(e, 'color') == correctMessageColor,
+      (e) => getColorStyle(e, 'color') == correctMessageColor
     );
 
     if (
@@ -607,7 +607,7 @@ class ButtonClicker {
     // prompt from the session that shows up in the page's challenge text. This
     // seems fragile (what if prompts overlap?) but I haven't found an alternate
     // approach.
-    const challenges = findElements('div', e => {
+    const challenges = findElements('div', (e) => {
       const attr = e.getAttribute('data-test');
       return attr && attr.split(' ').indexOf('challenge') != -1;
     });
@@ -625,7 +625,7 @@ class ButtonClicker {
     console.log(
       'Sentence ID not found for challenge:',
       text,
-      this.promptDiscussionIds,
+      this.promptDiscussionIds
     );
     return undefined;
   }
@@ -642,8 +642,8 @@ class ButtonClicker {
     const sentenceUrl = `/sentence/${sentenceId}`;
     console.log(`Requesting ${sentenceUrl}`);
     return fetch(sentenceUrl)
-      .then(res => res.json())
-      .then(obj => {
+      .then((res) => res.json())
+      .then((obj) => {
         // TODO: I noticed the 'comment' property missing once; dunno why.
         const commentId = obj.comment.id;
         const commentUrl = `https://forum.duolingo.com/comment/${commentId}`;
