@@ -31,15 +31,15 @@ function findElements(tagName, f, root) {
 }
 
 // Returns the value of the CSS style named |name| from element |e|.
-function getStyle(e, name) {
-  return getComputedStyle(e)[name];
+function getStyle(e, name, pseudo) {
+  return getComputedStyle(e, pseudo)[name];
 }
 
 // Like getStyle(), but tries to convert the color value to #rrggbb.
 // Chrome's getComputedStyle() seems to always return colors as rgb().
 // Based on https://stackoverflow.com/a/3627747/6882947.
-function getColorStyle(e, name) {
-  const color = getStyle(e, name);
+function getColorStyle(e, name, pseudo) {
+  const color = getStyle(e, name, pseudo);
   if (/^#[0-9a-f]{6}$/i.test(color)) return color;
 
   const rgb = color.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
@@ -47,6 +47,28 @@ function getColorStyle(e, name) {
 
   const hex = (n) => ('0' + parseInt(n).toString(16)).slice(-2);
   return '#' + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3]);
+}
+
+// Returns an #rrggbb color for the supplied button element, handling various
+// ways that Duolingo sets button colors.
+function getButtonColor(button) {
+  const transparent = 'rgba(0, 0, 0, 0)';
+
+  // This was the old, cromulent way of doing things:
+  // set the button's 'background-color' style to an opaque color.
+  if (getStyle(button, 'background-color') !== transparent) {
+    return getColorStyle(button, 'background-color');
+  }
+
+  // Starting around 20210719, the end-of-skill continue button became
+  // transparent, with the color assigned via a ::before pseudoelement.
+  if (getStyle(button, 'background-color', '::before') !== transparent) {
+    return getColorStyle(button, 'background-color', '::before');
+  }
+
+  // The mid-skill buttons are also transparent, but colors are
+  // slightly-more-sensibly assigned via the parent div's 'color' style.
+  return getStyle(button.parentElement, 'color');
 }
 
 // Starts watching for specific XHRs made in the page's JS context.
@@ -253,7 +275,7 @@ class ButtonClicker {
       this.nextButton = els[0];
     }
 
-    const buttonColor = getColorStyle(this.nextButton, 'background-color');
+    const buttonColor = getButtonColor(this.nextButton);
 
     // Skip correct answer screens.
     if (this.answeredCorrectly(buttonColor)) {
@@ -459,7 +481,7 @@ class ButtonClicker {
     );
     if (!nextButton) return;
 
-    const buttonColor = getColorStyle(nextButton, 'background-color');
+    const buttonColor = getButtonColor(nextButton);
 
     // Skip the "You've earned __ XP today" screen at the end of the story.
     if (buttonColor == storyCompleteButtonColor) {
