@@ -42,7 +42,9 @@ function getColorStyle(e, name, pseudo) {
   const color = getStyle(e, name, pseudo);
   if (/^#[0-9a-f]{6}$/i.test(color)) return color;
 
-  const rgb = color.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+  // This also matches rgb() tuples at the beginning of longer styles,
+  // e.g. box-shadow.
+  const rgb = color.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
   if (!rgb) return color;
 
   const hex = (n) => ('0' + parseInt(n).toString(16)).slice(-2);
@@ -64,6 +66,13 @@ function getButtonColor(button) {
   // transparent, with the color assigned via a ::before pseudoelement.
   if (getStyle(button, 'background-color', '::before') !== transparent) {
     return getColorStyle(button, 'background-color', '::before');
+  }
+
+  // The continue button for "Legendary" start screens is styled with a linear
+  // gradient, but it looks like we can get an approximation of its color by
+  // looking at the shadow on its ::before pseudoelement.
+  if (getStyle(button, 'box-shadow', '::before').startsWith('rgb(')) {
+    return getColorStyle(button, 'box-shadow', '::before');
   }
 
   // The mid-skill buttons are also transparent, but colors are
@@ -153,6 +162,11 @@ class MessageBox {
 // Minimum duration between evaluating the page state due to DOM mutations.
 const mutationIntervalMs = 10;
 
+// Maximum number of clicks to perform in a second and duration to back off if
+// we exceed it.
+const maxClicksPerSec = 5;
+const backoffSec = 5;
+
 // Time to wait for speech to finish before advancing stories.
 // This is empirically chosen but seems to mostly work for Spanish (sometimes it
 // feels a bit too long, other times too short).
@@ -169,6 +183,7 @@ const finishedMessageColor = '#3c3c3c';
 const reviewButtonTextColor = '#afafaf';
 const untimedPracticeButtonColor = '#1899d6';
 const storyCompleteButtonColor = '#1899d6';
+const legendaryStartButtonColor = '#4755df';
 
 // Clicks the "Continue" button to skip pointless screens.
 class ButtonClicker {
@@ -180,6 +195,8 @@ class ButtonClicker {
     this.storyClickTimeout = 0;
     this.numCorrectClicks = 0; // number of clicks so far in skill
     this.promptDiscussionIds = {}; // prompt to sentenceDiscussionId from session
+    this.numRecentClicks = 0; // number of clicks in |recentClicksSec|
+    this.recentClicksSec = -1; // second since epoch for |numRecentClicks|
 
     // It looks like Duolingo uses history.pushState to navigate between pages,
     // so we can't just run the script on /skill/ URLs. I don't think that
@@ -211,6 +228,26 @@ class ButtonClicker {
     });
   }
 
+  // Clicks |button| and increments |numRecentClicks|.
+  // Call this instead of clicking the button directly for rate-limiting.
+  click(button) {
+    button.click();
+
+    const now = parseInt(new Date().getTime() / 1000);
+    if (now != this.recentClicksSec) {
+      this.recentClicksSec = now;
+      this.numRecentClicks = 0;
+    }
+    this.numRecentClicks++;
+
+    if (this.numRecentClicks > maxClicksPerSec) {
+      console.log(
+        `Exceeded ${maxClicksPerSec} clicks in last second; ` +
+          `backing off for ${backoffSec} seconds`
+      );
+    }
+  }
+
   // Evaluates the page state whenever the DOM is mutated.
   onMutation(mutations) {
     // Bail out if there's already a scheduled call.
@@ -229,13 +266,13 @@ class ButtonClicker {
 
     this.lastMutationMs = now;
 
-    const isPractice = window.location.href.includes('/practice');
+    const isPractice = window.location.href.includes('/practice'); // skill that's already been guilded
     const isProgressQuiz = window.location.href.includes('/progress-quiz/'); // for Plus accounts
     const isPlacement = window.location.href.includes('/placement/'); // before creating account
-    const isSkill = window.location.href.includes('/skill/');
+    const isSkill = window.location.href.includes('/skill/'); // skill that hasn't been guilded yet or legendary
     const isSkillTest = isSkill && window.location.href.endsWith('/test'); // "key" icon to skip to next level
-    const isBigTest = window.location.href.includes('/bigtest/');
-    const isCheckpoint = window.location.href.includes('/checkpoint/');
+    const isCheckpoint = window.location.href.includes('/checkpoint/'); // "castle" icon between skills
+    const isBigTest = window.location.href.includes('/bigtest/'); // checkpoint that hasn't been completed yet
     const isStory = window.location.href.includes('/stories/');
 
     if (
@@ -254,6 +291,16 @@ class ButtonClicker {
         this.promptDiscussionIds = {};
       }
       if (this.storyClickTimeout) this.cancelStoryClickTimeout();
+      return;
+    }
+
+    // Bail out if we've been clicking too much, since it indicates that
+    // something is probably wrong:
+    // https://github.com/derat/duoleavemealone/issues/29
+    if (
+      this.numRecentClicks > maxClicksPerSec &&
+      parseInt(now / 1000) < this.recentClicksSec + backoffSec
+    ) {
       return;
     }
 
@@ -301,7 +348,7 @@ class ButtonClicker {
       this.msgBox.show(content, classes, options[correctTimeoutMsKey]);
 
       this.numCorrectClicks++;
-      this.nextButton.click();
+      this.click(this.nextButton);
       return;
     }
 
@@ -324,11 +371,11 @@ class ButtonClicker {
         switch (options[practiceAutoStartKey]) {
           case practiceAutoStartTimed:
             console.log('Starting timed practice');
-            this.nextButton.click();
+            this.click(this.nextButton);
             return;
           case practiceAutoStartUntimed:
             console.log('Starting untimed practice');
-            untimedPracticeButton.click();
+            this.click(untimedPracticeButton);
             return;
         }
       }
@@ -348,7 +395,20 @@ class ButtonClicker {
       }).length == 0
     ) {
       console.log('Skipping start screen');
-      this.nextButton.click();
+      this.click(this.nextButton);
+      return;
+    }
+
+    // The skill page (seen when you click on a skill that hasn't been gilded
+    // yet) usually doesn't have a start screen, but it does when you get there
+    // by going for the "legendary" level on a skill that you've already gilded.
+    if (
+      isSkill &&
+      this.numCorrectClicks == 0 &&
+      buttonColor == legendaryStartButtonColor
+    ) {
+      console.log('Skipping legendary start screen');
+      this.click(this.nextButton);
       return;
     }
 
@@ -364,14 +424,14 @@ class ButtonClicker {
         ['complete'],
         options[completeTimeoutMsKey]
       );
-      this.nextButton.click();
+      this.click(this.nextButton);
       return;
     }
 
     // Skip motivational messages.
     if (this.motivationShown(buttonColor)) {
       console.log('Continuing through motivational message');
-      this.nextButton.click();
+      this.click(this.nextButton);
       return;
     }
   }
@@ -471,7 +531,7 @@ class ButtonClicker {
           options[completeTimeoutMsKey]
         );
       }
-      doneButton.click();
+      this.click(doneButton);
       return;
     }
 
@@ -485,7 +545,7 @@ class ButtonClicker {
 
     // Skip the "You've earned __ XP today" screen at the end of the story.
     if (buttonColor == storyCompleteButtonColor) {
-      nextButton.click();
+      this.click(nextButton);
       return;
     }
 
@@ -500,7 +560,7 @@ class ButtonClicker {
       // TODO: Maybe show the correct message here? It doesn't seem to typically
       // have interesting information, though, and its contents appear to
       // overflow the message box.
-      nextButton.click();
+      this.click(nextButton);
       return;
     }
 
@@ -526,7 +586,7 @@ class ButtonClicker {
     this.storyClickTimeout = window.setTimeout(() => {
       this.storyClickTimeout = 0;
       console.log('Advancing story');
-      nextButton.click();
+      this.click(nextButton);
     }, storySpeechDelayMs);
   }
 
