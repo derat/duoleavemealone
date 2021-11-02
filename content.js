@@ -14,6 +14,23 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
   });
 });
 
+// Has the extension been temporarily disabled via the browser action icon?
+let extensionDisabled = false;
+
+// Listen for messages from background.js.
+chrome.runtime.onMessage.addListener((req, sender, cb) => {
+  if (req.type === toggleMsg) {
+    extensionDisabled = !extensionDisabled;
+    if (extensionDisabled) {
+      console.log('Disabling duoleavemealone');
+      chrome.runtime.sendMessage({ type: disabledMsg });
+    } else {
+      console.log('Enabling duoleavemealone');
+      chrome.runtime.sendMessage({ type: enabledMsg });
+    }
+  }
+});
+
 // Finds all elements of type |tagName| under |root| for which |f| returns true.
 // If |f| is undefined or null, all elements will be returned.
 // If |root| is undefined, Duolingo's root div will be searched.
@@ -291,6 +308,9 @@ class ButtonClicker {
       if (this.storyClickTimeout) this.cancelStoryClickTimeout();
       return;
     }
+
+    // Bail out if the user temporarily disabled us via the browser action icon.
+    if (extensionDisabled) return;
 
     // Bail out if we've been clicking too much, since it indicates that
     // something is probably wrong:

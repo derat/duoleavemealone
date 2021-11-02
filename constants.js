@@ -25,3 +25,9 @@ const optionDefaults = {
 
 // All option keys.
 const optionKeys = Object.keys(optionDefaults);
+
+// 'type' property values for messages sent between background.js and
+// content.js.
+const toggleMsg = 'duoleavemealone_toggle';
+const enabledMsg = 'duoleavemealone_enabled';
+const disabledMsg = 'duoleavemealone_disabled';
