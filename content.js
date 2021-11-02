@@ -286,9 +286,7 @@ class ButtonClicker {
     ) {
       if (this.nextButton) {
         console.log('Left page');
-        this.nextButton = null;
-        this.numCorrectClicks = 0;
-        this.promptDiscussionIds = {};
+        this.resetLesson();
       }
       if (this.storyClickTimeout) this.cancelStoryClickTimeout();
       return;
@@ -399,33 +397,67 @@ class ButtonClicker {
       return;
     }
 
-    // The skill page (seen when you click on a skill that hasn't been gilded
-    // yet) usually doesn't have a start screen, but it does when you get there
-    // by going for the "legendary" level on a skill that you've already gilded.
-    if (
-      isSkill &&
-      this.numCorrectClicks == 0 &&
-      buttonColor == legendaryStartButtonColor
-    ) {
-      console.log('Skipping legendary start screen');
-      this.click(this.nextButton);
-      return;
+    if (isSkill) {
+      // The skill page (seen when you click on a skill that hasn't been gilded
+      // yet) usually doesn't have a start screen, but it does when you get
+      // there by going for the "legendary" level on a skill that you've already
+      // gilded.
+      if (
+        this.numCorrectClicks == 0 &&
+        buttonColor == legendaryStartButtonColor
+      ) {
+        console.log('Skipping legendary start screen');
+        this.click(this.nextButton);
+        return;
+      }
+
+      // There's also a special screen when finishing a legendary level.
+      const legendaryFinish = findElements(
+        'button',
+        (e) => e.getAttribute('data-test') == 'continue-final-level'
+      );
+      if (legendaryFinish.length > 0) {
+        console.log('Finishing legendary level');
+        this.click(legendaryFinish[0]);
+        return;
+      }
     }
 
     // Skip lesson completion screen.
     if (this.finishedLesson(buttonColor)) {
-      const hs = findElements(
-        'h2',
-        (e) => getColorStyle(e, 'color') == finishedMessageColor
-      );
-      console.log('Continuing after lesson: ' + hs.map((e) => e.innerText));
-      this.msgBox.show(
-        hs.map((e) => e.cloneNode(true)),
-        ['complete'],
-        options[completeTimeoutMsKey]
-      );
-      this.click(this.nextButton);
-      return;
+      // Avoid clicking buttons if we're at the 'legendary' start/end screen,
+      // since it has multiple options (start button and close button to return
+      // to home screen) and additionally displays a prompt to either pay
+      // lingots or upgrade to Plus when the start button is clicked:
+      // https://github.com/derat/duoleavemealone/issues/29
+      const overlays = document.getElementById('overlays');
+      const legendary =
+        overlays &&
+        !!findElements(
+          'a',
+          (e) =>
+            e.getAttribute('data-test') == 'cta-button' &&
+            e.getAttribute('href').startsWith('/skill/'),
+          overlays
+        ).length;
+      if (legendary) {
+        // We don't get bounced back to the main URL between legendary lessons,
+        // so we need to manually reset the state to find the new 'next' button.
+        this.resetLesson();
+      } else {
+        const hs = findElements(
+          'h2',
+          (e) => getColorStyle(e, 'color') == finishedMessageColor
+        );
+        console.log('Continuing after lesson: ' + hs.map((e) => e.innerText));
+        this.msgBox.show(
+          hs.map((e) => e.cloneNode(true)),
+          ['complete'],
+          options[completeTimeoutMsKey]
+        );
+        this.click(this.nextButton);
+        return;
+      }
     }
 
     // Skip motivational messages.
@@ -440,6 +472,12 @@ class ButtonClicker {
   onMutationTimeout() {
     this.mutationTimeout = 0;
     this.onMutation([]);
+  }
+
+  resetLesson() {
+    this.nextButton = null;
+    this.numCorrectClicks = 0;
+    this.promptDiscussionIds = {};
   }
 
   // Returns true if the UI currently indicates that the user just answered a
