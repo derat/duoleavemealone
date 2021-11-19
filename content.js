@@ -199,7 +199,7 @@ const correctMessageColor = '#58a700';
 const finishedMessageColor = '#3c3c3c';
 const reviewButtonTextColor = '#afafaf';
 const untimedPracticeButtonColor = '#1899d6';
-const storyCompleteButtonColor = '#1899d6';
+const storyCompleteButtonColors = ['#1899d6', '#1cb0f6'];
 const legendaryStartButtonColor = '#4755df';
 
 // Clicks the "Continue" button to skip pointless screens.
@@ -544,23 +544,20 @@ class ButtonClicker {
   onStoryMutation() {
     if (!options[storiesEnabledKey]) return;
 
-    const buttons = findElements('button');
+    const buttons = findElements('button', (b) => !b.hasAttribute('disabled'));
     if (!buttons.length) return;
 
     // As of late 2020, there seems to be a single blue 'Continue' button with
     // 'data-test' set to 'stories-player-done' at the end of the story.
     // Earlier, there were two buttons (with the first one oddly corresponding
     // to the icon).
-    let doneButton = buttons.find(
+    //
+    // Note that there's also a 'stories-player-continue' button that gets used
+    // both for advancing within the story and for skipping a few random screens
+    // at the end of the story. That button is handled later in this method.
+    const doneButton = buttons.find(
       (b) => b.getAttribute('data-test') === 'stories-player-done'
     );
-    if (
-      !doneButton &&
-      buttons.length === 2 &&
-      !buttons[1].hasAttribute('disabled')
-    ) {
-      doneButton = buttons[1];
-    }
     if (doneButton) {
       console.log('Ending story');
       // The structure of the story completion message is a bit different, e.g.:
@@ -594,15 +591,14 @@ class ButtonClicker {
     }
 
     // Otherwise, the next button has the 'autofocus' attribute.
-    const nextButton = buttons.find(
-      (b) => b.hasAttribute('autofocus') && !b.hasAttribute('disabled')
-    );
+    const nextButton = buttons.find((b) => b.hasAttribute('autofocus'));
     if (!nextButton) return;
-
     const buttonColor = getButtonColor(nextButton);
+    console.log(buttonColor);
 
     // Skip the "You've earned __ XP today" screen at the end of the story.
-    if (buttonColor == storyCompleteButtonColor) {
+    if (storyCompleteButtonColors.includes(buttonColor)) {
+      console.log('Advancing through end-of-story screen');
       this.click(nextButton);
       return;
     }
