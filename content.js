@@ -283,13 +283,14 @@ class ButtonClicker {
 
     this.lastMutationMs = now;
 
-    const isPractice = window.location.href.includes('/practice'); // skill that's already been guilded
+    const isPractice = window.location.href.includes('/practice'); // skill that's already been gilded
     const isProgressQuiz = window.location.href.includes('/progress-quiz/'); // for Plus accounts
     const isPlacement = window.location.href.includes('/placement/'); // before creating account
-    const isSkill = window.location.href.includes('/skill/'); // skill that hasn't been guilded yet or legendary
+    const isSkill = window.location.href.includes('/skill/'); // skill that hasn't been gilded yet or legendary
     const isSkillTest = isSkill && window.location.href.endsWith('/test'); // "key" icon to skip to next level
     const isCheckpoint = window.location.href.includes('/checkpoint/'); // "castle" icon between skills
     const isBigTest = window.location.href.includes('/bigtest/'); // checkpoint that hasn't been completed yet
+    const isAlphabet = window.location.href.includes('/alphabets/'); // alphabet/character practice
     const isStory = window.location.href.includes('/stories/');
 
     if (
@@ -297,8 +298,9 @@ class ButtonClicker {
       !isProgressQuiz &&
       !isPlacement &&
       !isSkill && // includes |isSkillTest|
-      !isBigTest &&
       !isCheckpoint &&
+      !isBigTest &&
+      !isAlphabet &&
       !isStory
     ) {
       if (this.nextButton) {
@@ -401,7 +403,7 @@ class ButtonClicker {
 
     // Auto-start sequences that just have a single start button.
     if (
-      (isBigTest || isCheckpoint || isPlacement || isSkillTest) &&
+      (isAlphabet || isBigTest || isCheckpoint || isPlacement || isSkillTest) &&
       this.numCorrectClicks == 0 &&
       greenButtonColors.includes(buttonColor) &&
       // There are divs on the start screen with their data-test attributes set
