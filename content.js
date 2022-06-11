@@ -2,14 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import * as constants from './constants.js';
+
 // Current option values. Start with defaults and then update from storage.
-const options = Object.assign({}, optionDefaults);
-chrome.storage.sync.get(optionKeys, (items) => Object.assign(options, items));
+const options = Object.assign({}, constants.optionDefaults);
+chrome.storage.sync.get(constants.optionKeys, (items) =>
+  Object.assign(options, items)
+);
 
 // Update |options| when new values are written to storage.
 chrome.storage.onChanged.addListener((changes, namespace) => {
   if (namespace != 'sync') return;
-  optionKeys.forEach((key) => {
+  constants.optionKeys.forEach((key) => {
     if (key in changes) options[key] = changes[key].newValue;
   });
 });
@@ -19,14 +23,14 @@ let extensionDisabled = false;
 
 // Listen for messages from background.js.
 chrome.runtime.onMessage.addListener((req, sender, cb) => {
-  if (req.type === toggleMsg) {
+  if (req.type === constants.toggleMsg) {
     extensionDisabled = !extensionDisabled;
     if (extensionDisabled) {
       console.log('Disabling duoleavemealone');
-      chrome.runtime.sendMessage({ type: disabledMsg });
+      chrome.runtime.sendMessage({ type: constants.disabledMsg });
     } else {
       console.log('Enabling duoleavemealone');
-      chrome.runtime.sendMessage({ type: enabledMsg });
+      chrome.runtime.sendMessage({ type: constants.enabledMsg });
     }
   }
 });
@@ -95,55 +99,6 @@ function getButtonColor(button) {
   // The mid-skill buttons are also transparent, but colors are
   // slightly-more-sensibly assigned via the parent div's 'color' style.
   return getStyle(button.parentElement, 'color');
-}
-
-// Starts watching for specific XHRs made in the page's JS context.
-function injectXHRWatcher() {
-  // Content scripts run in an "isolated world" outside the page's JS context
-  // (https://developer.chrome.com/extensions/content_scripts#isolated_world),
-  // so a script element needs to be injected via the DOM. This technique is
-  // described at https://stackoverflow.com/a/9517879.
-  const script = document.createElement('script');
-  script.type = 'text/javascript';
-  script.textContent =
-    '(' +
-    // For reasons that are unclear to me, console.log() doesn't work in this
-    // function, which makes debugging super-fun.
-    function () {
-      // Each match contains a regexp matching URLs passed to open() and the
-      // name of the corresponding custom event to emit. It'd be nicer to pass
-      // this into the function, but we can't access bound variables here since
-      // we're running in the page's context. Receiving matches here via custom
-      // events from the content script seems like overkill, at least for now.
-      const matches = [{ re: /\/sessions$/, name: 'sessions' }];
-
-      const xhr = XMLHttpRequest.prototype;
-
-      const open = xhr.open;
-      xhr.open = function (method, url) {
-        this.url = url;
-        return open.apply(this, arguments);
-      };
-
-      const send = xhr.send;
-      xhr.send = function () {
-        this.addEventListener('load', () => {
-          // We can't directly communicate with the content script from here, so
-          // we emit custom events: https://stackoverflow.com/a/19312198
-          matches
-            .filter((m) => this.url.match(m.re))
-            .forEach((m) => {
-              document.dispatchEvent(
-                new CustomEvent(m.name, { detail: { text: this.responseText } })
-              );
-            });
-        });
-        return send.apply(this, arguments);
-      };
-    } +
-    ')()';
-  (document.head || document.documentElement).appendChild(script);
-  script.remove();
 }
 
 // Used to briefly display a message onscreen.
@@ -235,9 +190,15 @@ class ButtonClicker {
     // /sentence endpoint to get the comment ID of the sentence's discussion
     // thread.
     document.addEventListener('sessions', (e) => {
-      const sessions = JSON.parse(e.detail.text);
+      const sessions =
+        typeof e.detail.response === 'string'
+          ? JSON.parse(e.detail.response)
+          : e.detail.response;
+      if (typeof sessions.challenges === 'undefined') {
+        console.log("Session data doesn't contain challenges");
+        return;
+      }
       console.log(`Got ${sessions.challenges.length} challenge(s)`);
-
       this.promptDiscussionIds = {};
       sessions.challenges.forEach((ch) => {
         this.promptDiscussionIds[ch.prompt] = ch.sentenceDiscussionId;
@@ -346,7 +307,7 @@ class ButtonClicker {
 
     // Skip correct answer screens.
     if (this.answeredCorrectly(buttonColor)) {
-      if (!options[skipCorrectKey]) return;
+      if (!options[constants.skipCorrectKey]) return;
 
       console.log('Continuing after correct answer');
       const content = this.cloneCorrectMessage();
@@ -365,7 +326,11 @@ class ButtonClicker {
       // TODO: This message is quickly replaced by the lesson-complete message
       // after the last question, which makes it hard to click the "discuss"
       // link. Try to come up with some way to improve this.
-      this.msgBox.show(content, classes, options[correctTimeoutMsKey]);
+      this.msgBox.show(
+        content,
+        classes,
+        options[constants.correctTimeoutMsKey]
+      );
 
       this.numCorrectClicks++;
       this.click(this.nextButton);
@@ -388,12 +353,12 @@ class ButtonClicker {
         console.log('At practice start screen');
         const untimedPracticeButton = els[0];
 
-        switch (options[practiceAutoStartKey]) {
-          case practiceAutoStartTimed:
+        switch (options[constants.practiceAutoStartKey]) {
+          case constants.practiceAutoStartTimed:
             console.log('Starting timed practice');
             this.click(this.nextButton);
             return;
-          case practiceAutoStartUntimed:
+          case constants.practiceAutoStartUntimed:
             console.log('Starting untimed practice');
             this.click(untimedPracticeButton);
             return;
@@ -475,7 +440,7 @@ class ButtonClicker {
         this.msgBox.show(
           hs.map((e) => e.cloneNode(true)),
           ['complete'],
-          options[completeTimeoutMsKey]
+          options[constants.completeTimeoutMsKey]
         );
         this.click(this.nextButton);
         return;
@@ -544,7 +509,7 @@ class ButtonClicker {
 
   // Handles a mutation during a story.
   onStoryMutation() {
-    if (!options[storiesEnabledKey]) return;
+    if (!options[constants.storiesEnabledKey]) return;
 
     const buttons = findElements('button', (b) => !b.hasAttribute('disabled'));
     if (!buttons.length) return;
@@ -585,7 +550,7 @@ class ButtonClicker {
         this.msgBox.show(
           els.map((e) => e.cloneNode(true)),
           ['complete', 'story'],
-          options[completeTimeoutMsKey]
+          options[constants.completeTimeoutMsKey]
         );
       }
       this.click(doneButton);
@@ -596,7 +561,6 @@ class ButtonClicker {
     const nextButton = buttons.find((b) => b.hasAttribute('autofocus'));
     if (!nextButton) return;
     const buttonColor = getButtonColor(nextButton);
-    console.log(buttonColor);
 
     // Skip the "You've earned __ XP today" screen at the end of the story.
     if (storyCompleteButtonColors.includes(buttonColor)) {
@@ -797,11 +761,23 @@ class ButtonClicker {
   }
 }
 
-// This needs to run happen any other scripts are executed so we can catch the
+// Start watching for specific XHRs made in the page's JS context.
+//
+// This needs to run before any other scripts are executed so we can catch the
 // /sessions file beng loaded. The script's 'run_at' property is set to
 // 'document_start' in manifest.json to make this happen:
 // https://developer.chrome.com/extensions/content_scripts#run_time
-injectXHRWatcher();
+//
+// Content scripts run in an "isolated world" outside the page's JS context
+// (https://developer.chrome.com/extensions/content_scripts#isolated_world),
+// so a script element needs to be injected via the DOM. This technique is
+// described at https://stackoverflow.com/a/9517879.
+(() => {
+  const s = document.createElement('script');
+  s.src = chrome.runtime.getURL('xhr.js');
+  s.onload = () => s.remove();
+  (document.head || document.documentElement).appendChild(s);
+})();
 
 // ButtonClicker constructs a MessageBox, which expects the DOM to be loaded:
 // https://stackoverflow.com/a/28188390

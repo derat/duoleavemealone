@@ -3,19 +3,19 @@
 // found in the LICENSE file.
 
 // Option keys. Used both for chrome.storage.sync and options object.
-const completeTimeoutMsKey = 'completeTimeoutMs';
-const correctTimeoutMsKey = 'correctTimeoutMs';
-const practiceAutoStartKey = 'practiceAutoStart';
-const skipCorrectKey = 'skipCorrect';
-const storiesEnabledKey = 'storiesEnabled';
+export const completeTimeoutMsKey = 'completeTimeoutMs';
+export const correctTimeoutMsKey = 'correctTimeoutMs';
+export const practiceAutoStartKey = 'practiceAutoStart';
+export const skipCorrectKey = 'skipCorrect';
+export const storiesEnabledKey = 'storiesEnabled';
 
 // Values for |practiceAutoStartKey|.
-const practiceAutoStartDontStart = 0;
-const practiceAutoStartTimed = 1;
-const practiceAutoStartUntimed = 2;
+export const practiceAutoStartDontStart = 0;
+export const practiceAutoStartTimed = 1;
+export const practiceAutoStartUntimed = 2;
 
 // Default values for options.
-const optionDefaults = {
+export const optionDefaults = {
   [completeTimeoutMsKey]: 3000,
   [correctTimeoutMsKey]: 2000,
   [practiceAutoStartKey]: practiceAutoStartDontStart,
@@ -24,10 +24,10 @@ const optionDefaults = {
 };
 
 // All option keys.
-const optionKeys = Object.keys(optionDefaults);
+export const optionKeys = Object.keys(optionDefaults);
 
 // 'type' property values for messages sent between background.js and
 // content.js.
-const toggleMsg = 'duoleavemealone_toggle';
-const enabledMsg = 'duoleavemealone_enabled';
-const disabledMsg = 'duoleavemealone_disabled';
+export const toggleMsg = 'duoleavemealone_toggle';
+export const enabledMsg = 'duoleavemealone_enabled';
+export const disabledMsg = 'duoleavemealone_disabled';

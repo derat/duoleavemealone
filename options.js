@@ -2,25 +2,27 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import * as constants from './constants.js';
+
 function $(id) {
   return document.getElementById(id);
 }
 
 // Map from element ID to corresponding option.
 const optionIdKeys = {
-  ['complete-timeout-input']: completeTimeoutMsKey,
-  ['correct-timeout-input']: correctTimeoutMsKey,
-  ['practice-auto-start-select']: practiceAutoStartKey,
-  ['skip-correct-checkbox']: skipCorrectKey,
-  ['stories-enabled-checkbox']: storiesEnabledKey,
+  ['complete-timeout-input']: constants.completeTimeoutMsKey,
+  ['correct-timeout-input']: constants.correctTimeoutMsKey,
+  ['practice-auto-start-select']: constants.practiceAutoStartKey,
+  ['skip-correct-checkbox']: constants.skipCorrectKey,
+  ['stories-enabled-checkbox']: constants.storiesEnabledKey,
 };
 
 // Initialize the UI with option values from storage.
 document.addEventListener('DOMContentLoaded', () => {
-  chrome.storage.sync.get(optionKeys, (items) => {
+  chrome.storage.sync.get(constants.optionKeys, (items) => {
     Object.entries(optionIdKeys).forEach(([id, key]) => {
       const el = $(id);
-      const val = key in items ? items[key] : optionDefaults[key];
+      const val = key in items ? items[key] : constants.optionDefaults[key];
       if (el.type === 'checkbox') el.checked = !!val;
       else el.value = val;
     });
