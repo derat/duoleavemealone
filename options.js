@@ -4,9 +4,7 @@
 
 import * as constants from './constants.js';
 
-function $(id) {
-  return document.getElementById(id);
-}
+const $ = (id) => document.getElementById(id);
 
 // Map from element ID to corresponding option.
 const optionIdKeys = {
@@ -18,14 +16,12 @@ const optionIdKeys = {
 };
 
 // Initialize the UI with option values from storage.
-document.addEventListener('DOMContentLoaded', () => {
-  chrome.storage.sync.get(constants.optionKeys, (items) => {
-    Object.entries(optionIdKeys).forEach(([id, key]) => {
-      const el = $(id);
-      const val = key in items ? items[key] : constants.optionDefaults[key];
-      if (el.type === 'checkbox') el.checked = !!val;
-      else el.value = val;
-    });
+chrome.storage.sync.get(constants.optionKeys, (items) => {
+  Object.entries(optionIdKeys).forEach(([id, key]) => {
+    const el = $(id);
+    const val = key in items ? items[key] : constants.optionDefaults[key];
+    if (el.type === 'checkbox') el.checked = !!val;
+    else el.value = val;
   });
 });
 

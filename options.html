@@ -3,6 +3,10 @@
   <head>
     <title>duoleavemealone Options</title>
     <style>
+      body {
+        font-size: 14px;
+        margin: 16px;
+      }
       .row {
         display: block;
         margin-bottom: 12px;
@@ -13,15 +17,17 @@
       .row span:first-child {
         display: inline-block;
         margin-right: 8px;
-        min-width: 150px;
+        min-width: 180px;
       }
       input[type='number'] {
-        width: 5em;
+        width: 3em;
       }
     </style>
+    <script src="options.js" type="module"></script>
   </head>
 
   <body>
+    <h1>duoleavemealone</h1>
     <label class="row" for="practice-auto-start-select">
       <span>When practicing skills:</span>
       <select id="practice-auto-start-select">
@@ -47,6 +53,5 @@
       <span>Enable for Stories:</span>
       <input id="stories-enabled-checkbox" type="checkbox" />
     </label>
-    <script src="options.js" type="module"></script>
   </body>
 </html>
