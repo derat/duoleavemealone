@@ -244,16 +244,19 @@ class ButtonClicker {
 
     this.lastMutationMs = now;
 
-    const isPractice = window.location.href.includes('/practice'); // skill that's already been gilded
-    const isProgressQuiz = window.location.href.includes('/progress-quiz/'); // for Plus accounts
-    const isPlacement = window.location.href.includes('/placement/'); // before creating account
-    const isSkill = window.location.href.includes('/skill/'); // skill that hasn't been gilded yet or legendary
-    const isSkillTest = isSkill && window.location.href.endsWith('/test'); // "key" icon to skip to next level
-    const isCheckpoint = window.location.href.includes('/checkpoint/'); // "castle" icon between skills
-    const isBigTest = window.location.href.includes('/bigtest/'); // checkpoint that hasn't been completed yet
-    const isAlphabet = window.location.href.includes('/alphabets/'); // alphabet/character practice
-    const isStory = window.location.href.includes('/stories/');
+    const href = window.location.href;
+    const isPractice = href.includes('/practice'); // skill that's already been gilded
+    const isProgressQuiz = href.includes('/progress-quiz/'); // for Plus accounts
+    const isPlacement = href.includes('/placement/'); // before creating account
+    const isSkill = href.includes('/skill/'); // skill that hasn't been gilded yet or legendary
+    const isSkillTest = isSkill && href.endsWith('/test'); // "key" icon to skip to next level
+    const isCheckpoint = href.includes('/checkpoint/'); // "castle" icon between skills
+    const isBigTest = href.includes('/bigtest/'); // checkpoint that hasn't been completed yet
+    const isAlphabet = href.includes('/alphabets/'); // alphabet/character practice
+    const isLesson = href.includes('/lesson/') || href.endsWith('/lesson'); // 2022 tree redesign
+    const isStory = href.includes('/stories/');
 
+    // Bail out if we're no longer at a URL where there are buttons to click.
     if (
       !isPractice &&
       !isProgressQuiz &&
@@ -262,6 +265,7 @@ class ButtonClicker {
       !isCheckpoint &&
       !isBigTest &&
       !isAlphabet &&
+      !isLesson &&
       !isStory
     ) {
       if (this.nextButton) {
